@@ -1,26 +1,139 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
+  --font-sans: "Inter", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-border: var(--border);
+  --color-control: var(--control);
+  --color-control-hover: var(--control-hover);
+  --color-primary: var(--primary);
+  --color-live: var(--live);
+  --color-study: var(--study);
+  --color-replay: var(--replay);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-secondary: var(--secondary);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root, .dark {
+  --background: #0b0b0d; --foreground: #f4f4f5; --surface: #101014; --surface-raised: #15151a;
+  --muted: #b0b0ba; --subtle: #777782; --secondary: #c8c8d0; --border: #303039; --control: #1a1a20; --control-hover: #25252d; --primary: #60a5fa;
+  --live: #facc15; --study: #c084fc; --replay: #fb923c; --positive: #4ade80; --negative: #f87171; --active-filter-bg: #172554; --active-filter-border: #2563eb; --active-filter-text: #bfdbfe;
+  color-scheme: dark;
+}
+.light {
+  --background: #f6f7f9; --foreground: #18181b; --surface: #ffffff; --surface-raised: #fafafa;
+  --muted: #52525b; --subtle: #62626c; --secondary: #3f3f46; --border: #d8dbe2; --control: #f1f2f4; --control-hover: #e4e7ed; --primary: #1d4ed8;
+  --live: #a16207; --study: #7e22ce; --replay: #c2410c; --positive: #15803d; --negative: #b91c1c; --active-filter-bg: #dbeafe; --active-filter-border: #3b82f6; --active-filter-text: #1e40af;
+  color-scheme: light;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+* { border-color: var(--border); }
+html { overflow-x: hidden; scrollbar-gutter: stable; }
+html, body { background: var(--background); }
+body { overflow-x: clip; }
+body { color: var(--foreground); font-family: "Inter", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 15px; transition: background-color 160ms ease, color 160ms ease; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+::selection { background: color-mix(in srgb, var(--primary) 35%, transparent); }
+
+@layer components {
+  .surface { background: var(--surface); border: 1px solid var(--border); border-radius: 0.625rem; }
+  .control { height: 2.5rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--control); color: var(--foreground); }
+  .control-square { display: inline-grid; height: 2.5rem; width: 2.5rem; place-items: center; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--control); color: var(--muted); transition: 150ms; }
+  .control-square:hover { background: var(--control-hover); color: var(--foreground); }
+  .icon-action { display: inline-grid; height: 2rem; width: 2rem; cursor: pointer; place-items: center; border: 0; background: transparent; color: var(--muted); transition: color 150ms ease, background-color 150ms ease; }
+  .icon-action:hover { background: color-mix(in srgb, var(--control-hover) 55%, transparent); color: var(--foreground); }
+  .filter-chip-active { border-color: var(--active-filter-border); background: var(--active-filter-bg); color: var(--active-filter-text); font-weight: 600; }
+  .chart-caption { border-top: 1px solid #27272a; background: #050505; color: #f4f4f5; font-weight: 700; }
+  .trade-chart { background: color-mix(in srgb, var(--surface-raised) 88%, var(--control)); }
+  .trade-chart .chart-caption { border: 0; border-bottom: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border)); background: color-mix(in srgb, var(--primary) 7%, var(--surface)); color: var(--foreground); }
+}
+
+.settings-grid > section:last-child { grid-column: auto; }
+.overflow-hidden > .grid.grid-cols-7.border-b > * + * { border-left: 1px solid var(--border); }
+form[data-mode="study"] section.rounded-xl > fieldset + div { display: none; }
+form#trade-form label:has(select[name="session"]), form#trade-form label:has(select[name="result"]) { align-content: start; }
+form#trade-form select[name="session"], form#trade-form select[name="result"] { min-height: 2.5rem; padding-top: .65rem; padding-bottom: .65rem; }
+form#trade-form button[aria-label^="Remove chart"] { cursor: pointer; background: transparent; color: var(--negative); }
+form#trade-form button[aria-label^="Remove chart"]:hover { color: color-mix(in srgb, var(--negative) 75%, white); }
+figure:has(> .chart-caption) > .chart-caption { margin-bottom: 0; border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border)); border-bottom: 0; border-radius: .625rem .625rem 0 0; background: color-mix(in srgb, var(--primary) 7%, var(--surface)); color: var(--foreground); }
+figure:has(> .chart-caption) > .chart-caption + div { border-radius: 0 0 .625rem .625rem; background: color-mix(in srgb, var(--surface-raised) 88%, var(--control)); }
+figure:has(> .chart-caption) > .chart-caption + div img { transform: scale(.92); }
+[class~="bg-black/45"] { border: 1px solid rgb(96 165 250 / 28%); background: rgb(10 27 52 / 94%); color: #f8fafc; box-shadow: 0 3px 12px rgb(0 0 0 / 48%), inset 0 0 0 1px rgb(255 255 255 / 4%); }
+a[aria-disabled="true"] { cursor: not-allowed; opacity: .58; }
+.setup-field { border-radius: .5rem; }
+form#trade-form > section.rounded-xl { border: 0; border-radius: 0; background: transparent; padding: 0; }
+form#trade-form > section.rounded-xl > h2 { display: none; }
+form#trade-form > section.rounded-xl > fieldset { margin-bottom: 1.5rem; }
+.settings-grid section form:first-of-type button { white-space: nowrap; cursor: pointer; }
+form#trade-form section > div.mt-5 > div.grid > button[class*="bg-emerald"] { border-color: #047857; background: #064e3b; color: #d1fae5; box-shadow: inset 0 0 0 1px rgb(16 185 129 / 24%); }
+form#trade-form section > div.mt-5 > div.grid > button[class*="bg-red"] { border-color: #dc2626; background: #7f1d1d; color: #fee2e2; box-shadow: inset 0 0 0 1px rgb(248 113 113 / 24%); }
+button[class*="bg-red-600"] { cursor: pointer; border-color: #dc2626; background: #dc2626; color: white; }
+button[class*="bg-red-600"]:hover { border-color: #b91c1c; background: #b91c1c; color: white; }
+
+@media (min-width: 1280px) {
+  form#trade-form > section:first-of-type { margin-top: -8.125rem; }
+}
+
+/* Compatibility bridge while legacy feature surfaces migrate to semantic tokens. */
+.light [class*="bg-zinc-950"], .light [class*="bg-[#0b0b0d]"] { background-color: var(--surface); }
+.light [class*="bg-zinc-900"] { background-color: var(--control); }
+.light [class*="border-zinc-"] { border-color: var(--border); }
+.light .text-zinc-100, .light .text-zinc-200, .light .text-zinc-300 { color: var(--foreground); }
+.light .text-zinc-400, .light .text-zinc-500 { color: var(--muted); }
+.light .text-zinc-600, .light .text-zinc-700 { color: var(--subtle); }
+
+/* Compact controls stay readable without changing the overall density. */
+.text-xs { font-size: 0.875rem; line-height: 1.25rem; }
+.text-\[10px\] { font-size: 0.8125rem; line-height: 1.125rem; }
+
+@media (min-width: 1024px) {
+  form.grid section.rounded-xl > h2 + div.grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  form.grid section.rounded-xl > div.mt-5.grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+form.grid > section:first-of-type > div:first-child { display: none; }
+form[data-mode="study"] section.rounded-xl > h2 + div.grid > label:last-child { display: none; }
+form#trade-form section.rounded-xl > h2 + div.grid label small { display: none; }
+form#trade-form select[name="session"], form#trade-form select[name="result"], form#trade-form + div section label:nth-child(2) select, form#trade-form + div section label:nth-child(5) select {
+  pointer-events: none;
+  cursor: default;
+  height: auto;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  background-image: none;
+  padding: 0;
+  color: var(--secondary);
+  font-weight: 600;
+  box-shadow: none;
+}
+form#trade-form select[name="result"] option[value="open"] { display: none; }
+
+/* Kept outside Tailwind layers so active state always wins over utility backgrounds. */
+button.filter-chip-active, a.filter-chip-active {
+  border-color: var(--active-filter-border);
+  background: var(--active-filter-bg);
+  color: var(--active-filter-text);
+  font-weight: 650;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--active-filter-border) 18%, transparent), 0 0 14px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+button.filter-chip-active:hover, a.filter-chip-active:hover {
+  background: color-mix(in srgb, var(--active-filter-bg) 86%, var(--active-filter-border));
+  color: var(--active-filter-text);
+}
+
+/* Active segmented controls that predate filter-chip-active. */
+a.bg-control-hover.text-foreground, button.bg-control-hover.text-foreground {
+  border-color: var(--active-filter-border);
+  background: var(--active-filter-bg);
+  color: var(--active-filter-text);
+  font-weight: 650;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--active-filter-border) 18%, transparent);
 }
