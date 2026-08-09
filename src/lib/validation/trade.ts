@@ -22,7 +22,23 @@ export const tradeSchema = z.object({
   if (input.journalMode === "study" && !input.setupFound && [input.direction, input.plannedRr, input.result, input.realizedR].some((value) => value != null)) context.addIssue({ code: "custom", path: ["setupFound"], message: "Execution fields must be empty when no setup was found" });
 });
 
-export const imageMetaSchema = z.array(z.object({ imageType: z.enum(["htf_analysis", "setup", "entry", "management", "exit", "other"]), timeframe: z.string().min(1).max(16) })).max(6);
+export const cropStateSchema = z.object({
+  cropX: z.number().min(-200).max(200), cropY: z.number().min(-200).max(200),
+  cropWidth: z.number().positive().max(100), cropHeight: z.number().positive().max(100),
+  cropZoom: z.number().min(1).max(4), cropRotation: z.number().min(-180).max(180),
+  aspectRatio: z.literal("4:3"),
+});
+
+export const imageMetaSchema = z.array(z.object({
+  imageType: z.enum(["htf_analysis", "setup", "entry", "management", "exit", "other"]),
+  timeframe: z.string().min(1).max(16),
+  cropX: z.number().finite().default(0), cropY: z.number().finite().default(0),
+  cropWidth: z.number().finite().default(100), cropHeight: z.number().finite().default(100),
+  cropZoom: z.number().finite().default(1), cropRotation: z.number().finite().default(0),
+  aspectRatio: z.literal("4:3").default("4:3"),
+}).transform((crop) => ({ ...crop, cropX: Math.min(200, Math.max(-200, crop.cropX)), cropY: Math.min(200, Math.max(-200, crop.cropY)), cropWidth: 100, cropHeight: 100, cropZoom: Math.min(4, Math.max(1, crop.cropZoom)), cropRotation: Math.min(180, Math.max(-180, crop.cropRotation)) }))).max(6);
+
+export const existingImageMetaSchema = z.array(z.object({ id: z.string().uuid() }).and(cropStateSchema)).max(6);
 
 export const studyEntriesSchema = z.array(z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),

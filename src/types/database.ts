@@ -31,6 +31,13 @@ export interface TradeImage {
   timeframe: string;
   position: number;
   created_at: string;
+  crop_x: number;
+  crop_y: number;
+  crop_width: number;
+  crop_height: number;
+  crop_zoom: number;
+  crop_rotation: number;
+  aspect_ratio: "4:3";
   signed_url?: string | null;
 }
 
