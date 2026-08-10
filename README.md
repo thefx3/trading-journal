@@ -27,7 +27,7 @@ Never expose the service-role key to the browser.
 
 ## Database and Storage
 
-The migrations create profiles, instruments, trades and trade images, plus indexes, validation constraints, RLS policies, the private `trade-charts` bucket, and its Storage policies. The second migration introduces the isolated `live`, `study`, and `replay` journal modes. Existing records are preserved and classified as `live`.
+The migrations create profiles, instruments, trades and trade images, plus indexes, validation constraints, RLS policies, the private `trade-charts` bucket, and its Storage policies. The second migration introduces the isolated `live`, `study`, and `practice` journal modes. Existing records are preserved and classified as `live`.
 
 With a linked Supabase CLI project:
 
@@ -62,4 +62,4 @@ npm run build     # production build
 
 The `trade` is the central domain object. Visibility is present now for future sharing, but community features are intentionally not implemented.
 
-Performance metrics are always computed separately: Live only includes `journal_mode = 'live'`, Replay only includes `journal_mode = 'replay'`, and Study exposes learning counts rather than win rate or realized R.
+Performance metrics are always computed separately: Live only includes `journal_mode = 'live'`, Practice only includes `journal_mode = 'practice'`, and Study exposes learning counts rather than win rate or realized R.

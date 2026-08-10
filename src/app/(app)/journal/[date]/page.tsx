@@ -4,7 +4,7 @@ import { ModeComparisonColumn, type ComparisonMode } from "@/components/journal/
 import { PageHeader } from "@/components/layout/page-header";
 import { getTrades } from "@/lib/supabase/queries";
 
-const MODES: ComparisonMode[] = ["live", "study", "replay"];
+const MODES: ComparisonMode[] = ["live", "study", "practice"];
 function comparisonMode(value: string | undefined, fallback: ComparisonMode): ComparisonMode { return MODES.includes(value as ComparisonMode) ? value as ComparisonMode : fallback; }
 
 export default async function DayPage({ params, searchParams }: { params: Promise<{ date: string }>; searchParams: Promise<{ left?: string; right?: string }> }) {

@@ -1,4 +1,4 @@
-create type public.journal_mode as enum ('live', 'study', 'replay');
+create type public.journal_mode as enum ('live', 'study', 'practice');
 
 alter table public.trades
   add column journal_mode public.journal_mode not null default 'live',
@@ -33,5 +33,5 @@ alter table public.trades add constraint trades_study_setup_check check (
 
 create index trades_user_mode_date_idx on public.trades(user_id, journal_mode, trade_date desc);
 
-comment on column public.trades.journal_mode is 'live: real execution, study: retrospective analysis, replay: simulated execution without future knowledge';
+comment on column public.trades.journal_mode is 'live: real execution, study: retrospective analysis, practice: simulated execution without future knowledge';
 comment on column public.trades.setup_found is 'Relevant to study entries; false means no valid setup was identified';

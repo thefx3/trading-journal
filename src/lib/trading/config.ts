@@ -3,11 +3,11 @@ import type { ImageType, JournalMode, TradingSession } from "@/types/database";
 export const JOURNAL_MODES: Record<JournalMode, { label: string; description: string; badgeClass: string; activeClass: string }> = {
   live: { label: "Live", description: "Executed in real market conditions.", badgeClass: "border-live/35 bg-live/10 text-live", activeClass: "border-live/50 bg-live/10 text-live" },
   study: { label: "Study", description: "Review historical price action and study your model.", badgeClass: "border-study/35 bg-study/10 text-study", activeClass: "border-study/50 bg-study/10 text-study" },
-  replay: { label: "Replay", description: "Replay historical price action without knowing what comes next.", badgeClass: "border-replay/35 bg-replay/10 text-replay", activeClass: "border-replay/50 bg-replay/10 text-replay" },
+  practice: { label: "Practice", description: "Practice on historical price action without knowing what comes next.", badgeClass: "border-practice/35 bg-practice/10 text-practice", activeClass: "border-practice/50 bg-practice/10 text-practice" },
 };
 
 export function normalizeJournalMode(value: unknown): JournalMode {
-  return value === "study" || value === "replay" ? value : "live";
+  return value === "study" || value === "practice" ? value : "live";
 }
 
 export const FUTURES = new Set(["NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K", "GC", "MGC", "CL", "MCL", "SI", "SIL"]);

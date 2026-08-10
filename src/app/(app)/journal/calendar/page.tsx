@@ -8,19 +8,19 @@ import { getTradeSummaries } from "@/lib/supabase/queries";
 import { cn } from "@/lib/utils";
 import type { JournalMode } from "@/types/database";
 
-const MODES = ["all", "live", "study", "replay"] as const;
+const MODES = ["all", "live", "study", "practice"] as const;
 const MODE_STYLES: Record<(typeof MODES)[number], string> = {
   all: "border-primary/45 bg-primary/10 text-primary",
   live: "border-live/45 bg-live/10 text-live",
   study: "border-study/45 bg-study/10 text-study",
-  replay: "border-replay/45 bg-replay/10 text-replay",
+  practice: "border-practice/45 bg-practice/10 text-practice",
 };
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ mode?: string; month?: string }> }) {
   const params = await searchParams;
   const parsed = params.month ? parse(params.month, "yyyy-MM", new Date()) : new Date();
   const month = isValid(parsed) ? parsed : new Date();
-  const active = (["live", "study", "replay"].includes(params.mode ?? "") ? params.mode : "all") as JournalMode | "all";
+  const active = (["live", "study", "practice"].includes(params.mode ?? "") ? params.mode : "all") as JournalMode | "all";
   const allTrades = await getTradeSummaries();
   const monthTrades = allTrades.filter((trade) => trade.trade_date >= format(startOfMonth(month), "yyyy-MM-dd") && trade.trade_date <= format(endOfMonth(month), "yyyy-MM-dd"));
   const visible = active === "all" ? monthTrades : monthTrades.filter((trade) => trade.journal_mode === active);

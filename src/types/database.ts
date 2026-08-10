@@ -1,6 +1,6 @@
 export type Direction = "long" | "short";
 export type TradeResult = "win" | "loss" | "be" | "open";
-export type JournalMode = "live" | "study" | "replay";
+export type JournalMode = "live" | "study" | "practice";
 export type Visibility = "private" | "followers" | "public";
 export type TradingSession = "asia" | "london" | "new_york_am" | "new_york_lunch" | "new_york_pm" | "other";
 export type ImageType = "htf_analysis" | "setup" | "entry" | "management" | "exit" | "other";

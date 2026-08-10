@@ -6,7 +6,7 @@ const optionalString = z.preprocess((value) => value === "" || value == null ? n
 export const tradeSchema = z.object({
   instrumentId: z.string().uuid("Select an instrument"),
   setupId: optionalString.pipe(z.string().uuid().nullable()),
-  instrumentSymbol: z.string().min(1), journalMode: z.enum(["live", "study", "replay"]),
+  instrumentSymbol: z.string().min(1), journalMode: z.enum(["live", "study", "practice"]),
   setupFound: z.string().optional().transform((value) => value !== "false"),
   tradeDate: z.iso.date(), entryTime: optionalString,
   timezone: z.string().min(1), direction: optionalString.pipe(z.enum(["long", "short"]).nullable()),
@@ -17,7 +17,7 @@ export const tradeSchema = z.object({
   sessionOverride: z.string().optional().transform((value) => value === "true"), notes: z.string().max(10000).optional(),
 }).superRefine((input, context) => {
   if (input.journalMode !== "study") {
-    for (const field of ["entryTime", "direction", "plannedRr", "result", "realizedR"] as const) if (input[field] == null) context.addIssue({ code: "custom", path: [field], message: "Required for Live and Replay" });
+    for (const field of ["entryTime", "direction", "plannedRr", "result", "realizedR"] as const) if (input[field] == null) context.addIssue({ code: "custom", path: [field], message: "Required for Live and Practice" });
   }
   if (input.journalMode === "study" && !input.setupFound && [input.direction, input.plannedRr, input.result, input.realizedR].some((value) => value != null)) context.addIssue({ code: "custom", path: ["setupFound"], message: "Execution fields must be empty when no setup was found" });
 });

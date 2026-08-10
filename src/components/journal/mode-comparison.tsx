@@ -7,10 +7,10 @@ import { calculateMetrics } from "@/lib/trading/metrics";
 import { cn } from "@/lib/utils";
 import type { JournalMode, Trade } from "@/types/database";
 
-export type ComparisonMode = Extract<JournalMode, "live" | "study" | "replay">;
-const MODES: ComparisonMode[] = ["live", "study", "replay"];
-const MODE_TEXT: Record<ComparisonMode, string> = { live: "text-live", study: "text-study", replay: "text-replay" };
-const MODE_LINE: Record<ComparisonMode, string> = { live: "after:bg-live", study: "after:bg-study", replay: "after:bg-replay" };
+export type ComparisonMode = Extract<JournalMode, "live" | "study" | "practice">;
+const MODES: ComparisonMode[] = ["live", "study", "practice"];
+const MODE_TEXT: Record<ComparisonMode, string> = { live: "text-live", study: "text-study", practice: "text-practice" };
+const MODE_LINE: Record<ComparisonMode, string> = { live: "after:bg-live", study: "after:bg-study", practice: "after:bg-practice" };
 
 export function ModeComparisonColumn({ side, mode, otherMode, date, trades }: { side: "left" | "right"; mode: ComparisonMode; otherMode: ComparisonMode; date: string; trades: Trade[] }) {
   const config = JOURNAL_MODES[mode];

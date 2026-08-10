@@ -16,7 +16,7 @@ import type { JournalMode } from "@/types/database";
 export default async function JournalPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = await searchParams;
   const [allTrades, preferences, setups] = await Promise.all([getTrades(), getJournalPreferences(), getSetups(true)]);
-  const activeMode = (["live", "study", "replay"].includes(params.mode ?? "") ? params.mode : "all") as JournalMode | "all";
+  const activeMode = (["live", "study", "practice"].includes(params.mode ?? "") ? params.mode : "all") as JournalMode | "all";
   const activeInstrument: InstrumentGroup | "all" | null = params.allInstruments === "true" ? "all" : params.instrument && isInstrumentGroup(params.instrument) ? params.instrument : null;
   const lockedInstrument = activeInstrument && activeInstrument !== "all" ? activeInstrument : undefined;
   const parsedDate = params.date ? parseISO(params.date) : new Date();

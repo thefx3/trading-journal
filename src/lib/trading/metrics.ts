@@ -13,7 +13,7 @@ export function calculateMetrics(trades: Trade[]) {
 
 export type PerformanceMetrics = ReturnType<typeof calculateMetrics>;
 
-export function performanceTrades(trades: Trade[], mode: "live" | "replay") {
+export function performanceTrades(trades: Trade[], mode: "live" | "practice") {
   return trades.filter((trade) => trade.journal_mode === mode);
 }
 
