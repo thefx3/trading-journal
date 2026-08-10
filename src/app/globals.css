@@ -100,7 +100,6 @@ button[class*="bg-red-600"]:hover { border-color: #b91c1c; background: #b91c1c; 
   form.grid section.rounded-xl > div.mt-5.grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-form.grid > section:first-of-type > div:first-child { display: none; }
 form[data-mode="study"] section.rounded-xl > h2 + div.grid > label:last-child { display: none; }
 form#trade-form section.rounded-xl > h2 + div.grid label small { display: none; }
 form#trade-form select[name="session"], form#trade-form select[name="result"], form#trade-form + div section label:nth-child(2) select, form#trade-form + div section label:nth-child(5) select {
