@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { cropStateSchema, existingImageMetaSchema, imageMetaSchema, studyEntriesSchema, tradeSchema } from "@/lib/validation/trade";
+import { existingImageMetaSchema, imageMetaSchema, studyEntriesSchema, tradeSchema } from "@/lib/validation/trade";
 import { getTradingSession, localTradeTimeToUtc } from "@/lib/trading/sessions";
 export type TradeActionState = { error?: string; fieldErrors?: Record<string, string[]> } | undefined;
 const FILE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]); const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -42,12 +42,3 @@ export async function saveTrade(_: TradeActionState, formData: FormData): Promis
 
 export async function deleteTrade(formData: FormData) { const id = String(formData.get("id")); const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) redirect("/login"); const { data } = await supabase.from("trade_images").select("storage_path").eq("trade_id", id); const paths = data?.map((x) => x.storage_path) ?? []; if (paths.length) { const { error } = await supabase.storage.from("trade-charts").remove(paths); if (error) throw new Error(`Storage cleanup failed: ${error.message}`); } const { error } = await supabase.from("trades").delete().eq("id", id); if (error) throw new Error(error.message); revalidatePath("/journal"); revalidatePath("/trades"); redirect("/trades"); }
 export async function deleteTradeImage(formData: FormData) { const imageId = String(formData.get("imageId")); const tradeId = String(formData.get("tradeId")); const supabase = await createClient(); const { data, error } = await supabase.from("trade_images").select("storage_path").eq("id", imageId).single(); if (error) throw error; const { error: storageError } = await supabase.storage.from("trade-charts").remove([data.storage_path]); if (storageError) throw storageError; await supabase.from("trade_images").delete().eq("id", imageId); revalidatePath(`/trades/${tradeId}`); }
-
-export async function updateTradeImageCrop(formData: FormData) {
-  const imageId = String(formData.get("imageId") || ""); const tradeId = String(formData.get("tradeId") || "");
-  let crop: unknown; try { crop = JSON.parse(String(formData.get("crop") || "{}")); } catch { return; }
-  const parsed = cropStateSchema.safeParse(crop); if (!parsed.success) return;
-  const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) redirect("/login");
-  const value = parsed.data; const { error } = await supabase.from("trade_images").update({ crop_x: value.cropX, crop_y: value.cropY, crop_width: value.cropWidth, crop_height: value.cropHeight, crop_zoom: value.cropZoom, crop_rotation: value.cropRotation, aspect_ratio: value.aspectRatio }).eq("id", imageId);
-  if (error) throw error; revalidatePath(`/trades/${tradeId}`); revalidatePath("/journal");
-}
