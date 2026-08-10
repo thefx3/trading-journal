@@ -17,7 +17,7 @@ export function FeedControls({ query, lockedInstrument, setups }: { query: URLSe
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries([...query.entries()]));
-  function update(key: string, value: string) { const nextValues = { ...values, [key]: value }; setValues(nextValues); const next = new URLSearchParams(); Object.entries(nextValues).forEach(([name, entry]) => { if (entry) next.set(name, entry); }); startTransition(() => router.replace(`/journal?${next}`, { scroll: false })); }
+  function update(key: string, value: string) { const nextValues = { ...values, [key]: value, page: "" }; setValues(nextValues); const next = new URLSearchParams(); Object.entries(nextValues).forEach(([name, entry]) => { if (entry) next.set(name, entry); }); startTransition(() => router.replace(`/journal?${next}`, { scroll: false })); }
   function reset() { setValues({}); startTransition(() => router.replace("/journal", { scroll: false })); }
   const instruments: [string, string][] = [["", "All"], ...Object.keys(INSTRUMENT_GROUPS).map((value) => [value, value] as [string, string])];
   const setupOptions: [string, string][] = [["", "All"], ["none", "No model"], ...setups.map((setup) => [setup.id, setup.name] as [string, string])];

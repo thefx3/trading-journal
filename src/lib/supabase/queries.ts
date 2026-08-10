@@ -48,6 +48,16 @@ export async function getTrades(): Promise<Trade[]> {
   return withSignedImages((data ?? []) as unknown as Trade[]);
 }
 
+export async function getTradesByIds(ids: string[]): Promise<Trade[]> {
+  if (!ids.length) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("trades").select(TRADE_SELECT).in("id", ids);
+  if (error) throw error;
+  const trades = await withSignedImages((data ?? []) as unknown as Trade[]);
+  const positions = new Map(ids.map((id, index) => [id, index]));
+  return trades.toSorted((a, b) => (positions.get(a.id) ?? 0) - (positions.get(b.id) ?? 0));
+}
+
 export async function getTradeSummaries(): Promise<Trade[]> { const supabase = await createClient(); const { data, error } = await supabase.from("trades").select("*, instrument:instruments(*), setup:setups(*)").order("trade_date", { ascending: false }).order("entry_at", { ascending: false, nullsFirst: false }); if (error) throw error; return withStudyEntries((data ?? []).map((trade) => normalizeTrade({ ...trade, images: [], study_entries: [] } as unknown as Trade))); }
 
 export async function getTrade(id: string): Promise<Trade | null> {
