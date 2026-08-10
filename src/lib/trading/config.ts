@@ -22,7 +22,7 @@ export function isInstrumentGroup(value: string): value is InstrumentGroup {
   return value in INSTRUMENT_GROUPS;
 }
 export const RR_PRESETS = [1, 1.5, 2, 2.5, 3] as const;
-export const TIMEFRAMES = ["1M", "1W", "1D", "4H", "1H", "30m", "15m", "5m", "3m", "1m", "Other"] as const;
+export const TIMEFRAMES = ["1M", "1W", "1D", "7H", "6H", "4H", "90min", "1H", "30min", "15min", "5min", "3min", "1min", "Other"] as const;
 const TIMEFRAME_PRIORITY = new Map<string, number>(TIMEFRAMES.map((timeframe, index) => [timeframe.toLowerCase(), index]));
 export function compareTimeframesDescending(a: string, b: string) {
   return (TIMEFRAME_PRIORITY.get(a.toLowerCase()) ?? TIMEFRAMES.length) - (TIMEFRAME_PRIORITY.get(b.toLowerCase()) ?? TIMEFRAMES.length);

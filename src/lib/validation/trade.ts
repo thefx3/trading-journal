@@ -32,6 +32,9 @@ export const cropStateSchema = z.object({
 export const imageMetaSchema = z.array(z.object({
   imageType: z.enum(["htf_analysis", "setup", "entry", "management", "exit", "other"]),
   timeframe: z.string().min(1).max(16),
+  instrumentSymbol: z.string().min(1).max(24),
+  capturePreset: z.enum(["standard", "wide"]),
+  isComposed: z.boolean(),
   cropX: z.number().finite().default(0), cropY: z.number().finite().default(0),
   cropWidth: z.number().finite().default(100), cropHeight: z.number().finite().default(100),
   cropZoom: z.number().finite().default(1), cropRotation: z.number().finite().default(0),

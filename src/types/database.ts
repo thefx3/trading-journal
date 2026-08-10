@@ -38,6 +38,9 @@ export interface TradeImage {
   crop_zoom: number;
   crop_rotation: number;
   aspect_ratio: "4:3";
+  instrument_symbol: string | null;
+  capture_preset: "standard" | "wide" | null;
+  is_composed: boolean;
   signed_url?: string | null;
 }
 
