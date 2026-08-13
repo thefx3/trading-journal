@@ -69,6 +69,7 @@ const TRADING_EXTENSION_ID =
 type ExtensionSessionResponse = {
   error?: string;
   expectedCount?: number;
+  tradeDate?: string;
   screenshots?: { name: string; type: string; dataUrl: string }[];
 };
 
@@ -312,6 +313,11 @@ export function TradeForm({
         throw new Error("The copied session contains no screens.");
       if (response.expectedCount !== response.screenshots.length)
         throw new Error(`Session transfer incomplete: received ${response.screenshots.length} of ${response.expectedCount ?? "?"} screens.`);
+      if (response.tradeDate) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(response.tradeDate))
+          throw new Error("The copied session contains an invalid trade date.");
+        setDate(response.tradeDate);
+      }
       const transfer = new DataTransfer();
       for (const screenshot of response.screenshots) {
         const blob = await (await fetch(screenshot.dataUrl)).blob();
