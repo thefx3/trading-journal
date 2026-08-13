@@ -5,9 +5,16 @@ import { JournalModeBadge } from "@/components/trades/journal-mode";
 import { RValue } from "@/components/trades/result";
 import { FeedImageGallery } from "@/components/journal/feed-image-gallery";
 import { SESSION_LABELS } from "@/lib/trading/config";
+import { formatTimeInZone } from "@/lib/trading/format-time";
 import type { Trade } from "@/types/database";
 
-export function FeedCard({ trade }: { trade: Trade }) {
+export function FeedCard({
+  trade,
+  timezone,
+}: {
+  trade: Trade;
+  timezone: string;
+}) {
   const isStudy = trade.journal_mode === "study";
   const charts = trade.images
     .filter((image) => Boolean(image.signed_url))
@@ -52,7 +59,7 @@ export function FeedCard({ trade }: { trade: Trade }) {
               {format(new Date(`${trade.trade_date}T12:00:00`), "d MMM yyyy")}
             </span>
             {trade.entry_at ? (
-              <span>{format(new Date(trade.entry_at), "HH:mm")}</span>
+              <span>{formatTimeInZone(trade.entry_at, timezone)}</span>
             ) : null}
             <span>{SESSION_LABELS[trade.session]}</span>
           </div>
