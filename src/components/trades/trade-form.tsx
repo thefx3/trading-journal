@@ -212,6 +212,10 @@ export function TradeForm({
         cropZoom: Number(image.crop_zoom ?? 1),
         cropRotation: Number(image.crop_rotation ?? 0),
         aspectRatio: "4:3",
+        trimLeft: 0,
+        trimRight: 0,
+        trimTop: 0,
+        trimBottom: 0,
       })),
   );
   const [cropTarget, setCropTarget] = useState<{
@@ -402,6 +406,7 @@ export function TradeForm({
             src: charts[cropTarget.index].url,
             crop: charts[cropTarget.index].crop,
             preset: charts[cropTarget.index].capturePreset,
+            allowTrim: true,
           }
         : null
       : cropTarget
@@ -410,6 +415,7 @@ export function TradeForm({
               src: existingCrops[cropTarget.index].url,
               crop: existingCrops[cropTarget.index],
               preset: "standard" as const,
+              allowTrim: false,
             }
           : null
         : null;
@@ -1009,6 +1015,7 @@ export function TradeForm({
           src={cropItem.src}
           preset={cropItem.preset}
           initial={cropItem.crop}
+          allowTrim={cropItem.allowTrim}
           onApply={applyCrop}
           onCancel={() => setCropTarget(null)}
         />
