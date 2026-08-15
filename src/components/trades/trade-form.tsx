@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardPaste, ImagePlus, SlidersHorizontal, X } from "lucide-react";
 import { saveTrade } from "@/app/actions/trades";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,10 @@ import {
 import { getTradingSession, localTradeTimeToUtc } from "@/lib/trading/sessions";
 import { cn } from "@/lib/utils";
 import {
-  encodeFinalTradeChart,
+  extractCapturedChart,
   optimizeTradeChart,
 } from "@/lib/images/optimize-trade-chart";
-import { readTradingJournalMetadata } from "@/lib/images/trading-journal-metadata";
+import { readTradingJournalMetadata, type TradingJournalImageMetadata } from "@/lib/images/trading-journal-metadata";
 import { composeTradeChart } from "@/lib/images/compose-trade-chart";
 import type {
   Direction,
@@ -70,7 +70,7 @@ type ExtensionSessionResponse = {
   error?: string;
   expectedCount?: number;
   tradeDate?: string;
-  screenshots?: { name: string; type: string; dataUrl: string }[];
+  screenshots?: ({ name: string; type: string; dataUrl: string } & Partial<Pick<TradingJournalImageMetadata, "symbol" | "timeframe" | "preset" | "capturedAt">>)[];
 };
 
 function requestCopiedSession() {
@@ -218,11 +218,28 @@ export function TradeForm({
     kind: "new" | "existing";
     index: number;
   } | null>(null);
+  const objectUrls = useRef(new Set<string>());
   const isStudy = mode === "study";
   const showExecution = !isStudy;
   const selectedInstrument = instruments.find(
     (item) => item.symbol === instrument,
   );
+
+  function createChartUrl(file: Blob) {
+    const url = URL.createObjectURL(file);
+    objectUrls.current.add(url);
+    return url;
+  }
+
+  function revokeChartUrl(url: string) {
+    URL.revokeObjectURL(url);
+    objectUrls.current.delete(url);
+  }
+
+  useEffect(() => () => {
+    objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    objectUrls.current.clear();
+  }, []);
 
   function setCharts(next: Chart[]) {
     setChartsState(next);
@@ -231,7 +248,7 @@ export function TradeForm({
     if (fileInput.current) fileInput.current.files = transfer.files;
   }
 
-  async function addFiles(files: FileList | null) {
+  async function addFiles(files: FileList | null, suppliedMetadata?: (TradingJournalImageMetadata | null)[]) {
     if (!files || optimizing) return;
     const available = Math.max(
       0,
@@ -261,9 +278,7 @@ export function TradeForm({
     setUploadError(null);
     if (fileInput.current) fileInput.current.value = "";
     try {
-      const metadata = await Promise.all(
-        selected.map(readTradingJournalMetadata),
-      );
+      const metadata = suppliedMetadata ?? await Promise.all(selected.map(readTradingJournalMetadata));
       const firstDetected = metadata.find((value) => value);
       if (firstDetected && charts.length === 0 && existingCrops.length === 0)
         setInstrument(firstDetected.symbol);
@@ -271,24 +286,27 @@ export function TradeForm({
       for (let index = 0; index < selected.length; index++) {
         const source = selected[index]!;
         const embedded = metadata[index];
+        const editableSource = embedded
+          ? await extractCapturedChart(source, embedded.preset)
+          : source;
         const result = embedded
           ? {
-              file: await encodeFinalTradeChart(source),
+              file: editableSource,
               originalSize: source.size,
               optimized: true,
             }
           : await optimizeTradeChart(source);
         additions.push({
           file: result.file,
-          sourceFile: source,
-          url: URL.createObjectURL(result.file),
+          sourceFile: editableSource,
+          url: createChartUrl(result.file),
           imageType: "setup",
           timeframe: embedded?.timeframe ?? "5min",
           instrumentSymbol: embedded?.symbol ?? instrument,
           capturePreset: embedded?.preset ?? "standard",
-          isComposed: Boolean(embedded),
+          isComposed: false,
           crop: DEFAULT_CROP,
-          cropApplied: Boolean(embedded),
+          cropApplied: false,
           originalSize: result.originalSize,
           optimized: result.optimized,
         });
@@ -319,6 +337,7 @@ export function TradeForm({
         setDate(response.tradeDate);
       }
       const transfer = new DataTransfer();
+      const metadata: (TradingJournalImageMetadata | null)[] = [];
       for (const screenshot of response.screenshots) {
         const blob = await (await fetch(screenshot.dataUrl)).blob();
         transfer.items.add(
@@ -326,8 +345,13 @@ export function TradeForm({
             type: screenshot.type || blob.type || "image/png",
           }),
         );
+        metadata.push(
+          screenshot.symbol && screenshot.timeframe && screenshot.preset && screenshot.capturedAt
+            ? { signature: "trading-journal-capture", version: 1, symbol: screenshot.symbol, timeframe: screenshot.timeframe, preset: screenshot.preset, capturedAt: screenshot.capturedAt }
+            : null,
+        );
       }
-      await addFiles(transfer.files);
+      await addFiles(transfer.files, metadata);
     } catch (error) {
       setUploadError(
         error instanceof Error
@@ -338,7 +362,7 @@ export function TradeForm({
   }
 
   function removeChart(index: number) {
-    URL.revokeObjectURL(charts[index].url);
+    revokeChartUrl(charts[index].url);
     setCharts(charts.filter((_, itemIndex) => itemIndex !== index));
   }
 
@@ -404,13 +428,13 @@ export function TradeForm({
           target.timeframe,
           date,
         );
-        URL.revokeObjectURL(target.url);
+        revokeChartUrl(target.url);
         const next = charts.map((item, index) =>
           index === cropTarget.index
             ? {
                 ...item,
                 file,
-                url: URL.createObjectURL(file),
+                url: createChartUrl(file),
               instrumentSymbol: instrument,
               isComposed: true,
                 crop: DEFAULT_CROP,

@@ -30,7 +30,8 @@ export async function saveTrade(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Your session expired. Please sign in again." };
   const input = parsed.data;
-  const tradeId = String(formData.get("tradeId") || crypto.randomUUID());
+  const submittedTradeId = String(formData.get("tradeId") || "");
+  const tradeId = submittedTradeId || crypto.randomUUID();
   const files = formData
     .getAll("charts")
     .filter((v): v is File => v instanceof File && v.size > 0);
@@ -70,12 +71,16 @@ export async function saveTrade(
     return {
       error: "Charts must be PNG, JPEG or WebP and no larger than 10 MB.",
     };
-  const { count: existingImageCount, error: imageCountError } = await supabase
-    .from("trade_images")
-    .select("id", { count: "exact", head: true })
-    .eq("trade_id", tradeId);
-  if (imageCountError) return { error: imageCountError.message };
-  if ((existingImageCount ?? 0) + files.length > 6)
+  let existingImageCount = 0;
+  if (submittedTradeId) {
+    const { count, error: imageCountError } = await supabase
+      .from("trade_images")
+      .select("id", { count: "exact", head: true })
+      .eq("trade_id", tradeId);
+    if (imageCountError) return { error: imageCountError.message };
+    existingImageCount = count ?? 0;
+  }
+  if (existingImageCount + files.length > 6)
     return { error: "A trade can contain up to 6 charts." };
   let imageMeta: unknown;
   try {
@@ -183,17 +188,15 @@ export async function saveTrade(
   const uploaded: string[] = [];
   const imageRows: Record<string, unknown>[] = [];
   try {
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    const uploadResults = await Promise.all(files.map(async (file, i) => {
       const ext = file.name.split(".").pop()?.toLowerCase() || "png";
       const path = `${user.id}/${tradeId}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage
         .from("trade-charts")
-        .upload(path, file);
-      if (error) throw error;
-      uploaded.push(path);
+        .upload(path, file, { cacheControl: "31536000", contentType: file.type, upsert: false });
+      if (error) return { error, path, row: null };
       const meta = metaResult.data[i];
-      imageRows.push({
+      return { error: null, path, row: {
         trade_id: tradeId,
         storage_path: path,
         image_type: meta.imageType,
@@ -201,7 +204,7 @@ export async function saveTrade(
         instrument_symbol: meta.instrumentSymbol,
         capture_preset: meta.capturePreset,
         is_composed: meta.isComposed,
-        position: i + Number(formData.get("existingImageCount") || 0),
+        position: i + existingImageCount,
         crop_x: meta.cropX,
         crop_y: meta.cropY,
         crop_width: meta.cropWidth,
@@ -209,8 +212,12 @@ export async function saveTrade(
         crop_zoom: meta.cropZoom,
         crop_rotation: meta.cropRotation,
         aspect_ratio: meta.aspectRatio,
-      });
-    }
+      } };
+    }));
+    uploaded.push(...uploadResults.filter((result) => !result.error).map((result) => result.path));
+    const failedUpload = uploadResults.find((result) => result.error);
+    if (failedUpload?.error) throw failedUpload.error;
+    imageRows.push(...uploadResults.flatMap((result) => result.row ? [result.row] : []));
   } catch (error) {
     if (uploaded.length)
       await supabase.storage.from("trade-charts").remove(uploaded);

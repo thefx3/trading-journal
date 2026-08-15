@@ -22,4 +22,9 @@ describe("readTradingJournalMetadata", () => {
     await expect(readTradingJournalMetadata(new File(["not png"], "chart.webp", { type: "image/webp" }))).resolves.toBeNull();
     await expect(readTradingJournalMetadata(metadataPng({ signature: "other", version: 1 }))).resolves.toBeNull();
   });
+
+  it("recognizes optimized extension WebP captures from their filename", async () => {
+    const file = new File(["webp"], "MNQ_30min_wide_2026-08-15.webp", { type: "image/webp", lastModified: Date.parse("2026-08-15T10:00:00Z") });
+    await expect(readTradingJournalMetadata(file)).resolves.toMatchObject({ symbol: "MNQ", timeframe: "30min", preset: "wide" });
+  });
 });

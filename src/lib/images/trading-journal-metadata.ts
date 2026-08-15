@@ -1,6 +1,21 @@
 export type TradingJournalImageMetadata = { signature: "trading-journal-capture"; version: 1; symbol: string; timeframe: string; preset: "standard" | "wide"; capturedAt: string };
 
+export function metadataFromCaptureFilename(file: File): TradingJournalImageMetadata | null {
+  const match = /^([^_]+)_([^_]+)_(standard|wide)_\d{4}-\d{2}-\d{2}\.(?:webp|png)$/i.exec(file.name);
+  if (!match) return null;
+  return {
+    signature: "trading-journal-capture",
+    version: 1,
+    symbol: match[1].toUpperCase(),
+    timeframe: match[2],
+    preset: match[3].toLowerCase() as "standard" | "wide",
+    capturedAt: new Date(file.lastModified).toISOString(),
+  };
+}
+
 export async function readTradingJournalMetadata(file: File): Promise<TradingJournalImageMetadata | null> {
+  const filenameMetadata = metadataFromCaptureFilename(file);
+  if (filenameMetadata) return filenameMetadata;
   if (file.type !== "image/png") return null;
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (bytes.length < 8 || bytes[0] !== 137 || bytes[1] !== 80 || bytes[2] !== 78 || bytes[3] !== 71) return null;

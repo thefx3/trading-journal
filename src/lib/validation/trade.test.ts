@@ -40,4 +40,9 @@ describe("imageMetaSchema", () => {
   it("rejects more than six charts", () => {
     expect(imageMetaSchema.safeParse(Array.from({ length: 7 }, () => image)).success).toBe(false);
   });
+
+  it("preserves a chart zoomed out inside its final frame", () => {
+    const result = imageMetaSchema.parse([{ ...image, cropZoom: 0.5 }]);
+    expect(result[0]?.cropZoom).toBe(0.5);
+  });
 });

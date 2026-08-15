@@ -25,7 +25,7 @@ export const tradeSchema = z.object({
 export const cropStateSchema = z.object({
   cropX: z.number().min(-200).max(200), cropY: z.number().min(-200).max(200),
   cropWidth: z.number().positive().max(100), cropHeight: z.number().positive().max(100),
-  cropZoom: z.number().min(1).max(4), cropRotation: z.number().min(-180).max(180),
+  cropZoom: z.number().min(0.25).max(4), cropRotation: z.number().min(-180).max(180),
   aspectRatio: z.literal("4:3"),
 });
 
@@ -39,7 +39,7 @@ export const imageMetaSchema = z.array(z.object({
   cropWidth: z.number().finite().default(100), cropHeight: z.number().finite().default(100),
   cropZoom: z.number().finite().default(1), cropRotation: z.number().finite().default(0),
   aspectRatio: z.literal("4:3").default("4:3"),
-}).transform((crop) => ({ ...crop, cropX: Math.min(200, Math.max(-200, crop.cropX)), cropY: Math.min(200, Math.max(-200, crop.cropY)), cropWidth: 100, cropHeight: 100, cropZoom: Math.min(4, Math.max(1, crop.cropZoom)), cropRotation: Math.min(180, Math.max(-180, crop.cropRotation)) }))).max(6);
+}).transform((crop) => ({ ...crop, cropX: Math.min(200, Math.max(-200, crop.cropX)), cropY: Math.min(200, Math.max(-200, crop.cropY)), cropWidth: 100, cropHeight: 100, cropZoom: Math.min(4, Math.max(0.25, crop.cropZoom)), cropRotation: Math.min(180, Math.max(-180, crop.cropRotation)) }))).max(6);
 
 export const existingImageMetaSchema = z.array(z.object({ id: z.string().uuid() }).and(cropStateSchema)).max(6);
 

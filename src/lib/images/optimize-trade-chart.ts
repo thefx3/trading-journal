@@ -1,6 +1,7 @@
 const MAX_DIMENSION = 2560;
 const WEBP_QUALITY = 0.95;
 const FINAL_WEBP_QUALITY = 0.9;
+const EDITABLE_WEBP_QUALITY = 0.98;
 const MINIMUM_SAVING_RATIO = 0.12;
 
 export type OptimizedChart = { file: File; originalSize: number; optimized: boolean };
@@ -22,6 +23,40 @@ export async function encodeFinalTradeChart(file: File): Promise<File> {
     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not encode chart")), "image/webp", FINAL_WEBP_QUALITY));
     return new File([blob], webpName(file.name), { type: "image/webp", lastModified: file.lastModified });
   } finally { bitmap.close(); }
+}
+
+export async function extractCapturedChart(
+  file: File,
+  preset: "standard" | "wide",
+): Promise<File> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  try {
+    const chartRatio = preset === "wide" ? 16 / 9 : 4 / 3;
+    const chartWidth = bitmap.width;
+    const chartHeight = Math.min(bitmap.height, Math.round(chartWidth / chartRatio));
+    const sourceY = Math.max(0, Math.round((bitmap.height - chartHeight) / 2));
+    const canvas = document.createElement("canvas");
+    canvas.width = chartWidth;
+    canvas.height = chartHeight;
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw new Error("Canvas is unavailable");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, chartWidth, chartHeight);
+    context.drawImage(bitmap, 0, sourceY, chartWidth, chartHeight, 0, 0, chartWidth, chartHeight);
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(
+        (value) => value ? resolve(value) : reject(new Error("Could not extract captured chart")),
+        "image/webp",
+        EDITABLE_WEBP_QUALITY,
+      ),
+    );
+    return new File([blob], webpName(file.name), {
+      type: "image/webp",
+      lastModified: file.lastModified,
+    });
+  } finally {
+    bitmap.close();
+  }
 }
 
 export async function optimizeTradeChart(file: File): Promise<OptimizedChart> {
