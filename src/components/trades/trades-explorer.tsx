@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { TradeDateFilter } from "./trade-date-filter";
 import { TradeList } from "./trade-list";
 import { Button } from "@/components/ui/button";
+import { CollapsibleFilterPanel } from "@/components/ui/collapsible-filter-panel";
+import { TIMEFRAMES } from "@/lib/trading/config";
+import { matchesTimeframeFilter, parseTimeframeFilter } from "@/lib/trading/filters";
+import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/database";
 
 function filtersFromLocation() {
@@ -39,6 +43,9 @@ export function TradesExplorer({
     visible = visible.filter((trade) => trade.result === filters.result);
   if (filters.session)
     visible = visible.filter((trade) => trade.session === filters.session);
+  const selectedTimeframes = parseTimeframeFilter(filters.timeframes);
+  if (selectedTimeframes.length)
+    visible = visible.filter((trade) => matchesTimeframeFilter(trade, selectedTimeframes));
   if (filters.dateValue) {
     const expectedLength =
       filters.dateRange === "year" ? 4 : filters.dateRange === "month" ? 7 : 10;
@@ -71,10 +78,12 @@ export function TradesExplorer({
     ],
   ] as const;
   function apply(form: HTMLFormElement) {
-    const next = Object.fromEntries(new FormData(form).entries()) as Record<
+    const formData = new FormData(form);
+    const next = Object.fromEntries(formData.entries()) as Record<
       string,
       string
     >;
+    next.timeframes = TIMEFRAMES.filter((timeframe) => formData.getAll("timeframes").includes(timeframe)).join(",");
     const query = new URLSearchParams();
     Object.entries(next).forEach(([key, value]) => {
       if (value) query.set(key, value);
@@ -91,14 +100,15 @@ export function TradesExplorer({
       <p className="mb-4 text-sm text-muted">
         {visible.length} recorded entr{visible.length === 1 ? "y" : "ies"}
       </p>
-      <form
-        key={JSON.stringify(filters)}
-        className="mb-5 grid gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          apply(event.currentTarget);
-        }}
-      >
+      <CollapsibleFilterPanel storageKey="trading-journal:trades-filters-open" className="mb-5">
+        <form
+          key={JSON.stringify(filters)}
+          className="grid gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            apply(event.currentTarget);
+          }}
+        >
         <div className="flex flex-wrap gap-2">
           {options.map(([name, label, values]) => (
             <select
@@ -116,6 +126,17 @@ export function TradesExplorer({
             </select>
           ))}
         </div>
+        <fieldset>
+          <legend className="mb-2 text-xs text-muted">Timeframes · match all selected</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {TIMEFRAMES.map((timeframe) => (
+              <label key={timeframe} className="cursor-pointer">
+                <input className="peer sr-only" type="checkbox" name="timeframes" value={timeframe} defaultChecked={selectedTimeframes.includes(timeframe)} />
+                <span className={cn("grid h-8 place-items-center rounded-md border border-border bg-control px-2.5 text-xs text-muted transition hover:bg-control-hover hover:text-foreground", "peer-checked:border-primary/55 peer-checked:bg-primary/15 peer-checked:text-primary")}>{timeframe}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <TradeDateFilter
             initialRange={filters.dateRange}
@@ -128,7 +149,8 @@ export function TradesExplorer({
             Apply
           </Button>
         </div>
-      </form>
+        </form>
+      </CollapsibleFilterPanel>
       <TradeList trades={visible} timezone={timezone} />
     </>
   );

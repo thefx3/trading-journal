@@ -3,9 +3,11 @@
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { INSTRUMENT_GROUPS, type InstrumentGroup } from "@/lib/trading/config";
+import { INSTRUMENT_GROUPS, TIMEFRAMES, type InstrumentGroup } from "@/lib/trading/config";
+import { parseTimeframeFilter } from "@/lib/trading/filters";
 import { cn } from "@/lib/utils";
 import type { JournalMode, Setup } from "@/types/database";
+import { CollapsibleFilterPanel } from "@/components/ui/collapsible-filter-panel";
 
 const STATIC_FILTERS = [
   {
@@ -77,6 +79,12 @@ export function FeedControls({
     setValues({});
     startTransition(() => router.replace("/journal", { scroll: false }));
   }
+  function toggleTimeframe(timeframe: string) {
+    const selected = new Set<string>(parseTimeframeFilter(values.timeframes));
+    if (selected.has(timeframe)) selected.delete(timeframe);
+    else selected.add(timeframe);
+    update("timeframes", TIMEFRAMES.filter((item) => selected.has(item)).join(","));
+  }
   const instruments: [string, string][] = [
     ["", "All"],
     ...Object.keys(INSTRUMENT_GROUPS).map(
@@ -88,19 +96,13 @@ export function FeedControls({
     ["none", "No model"],
     ...setups.map((setup) => [setup.id, setup.name] as [string, string]),
   ];
+  const selectedTimeframes = parseTimeframeFilter(values.timeframes);
   return (
-    <section
-      className={cn("surface p-4 transition-opacity", pending && "opacity-70")}
+    <CollapsibleFilterPanel
+      storageKey="trading-journal:journal-filters-open"
+      className={cn("transition-opacity", pending && "opacity-70")}
+      actions={<button type="button" onClick={reset} className="text-xs text-muted hover:text-primary">Reset</button>}
     >
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Filters</h2>
-        <button
-          onClick={reset}
-          className="text-xs text-muted hover:text-primary"
-        >
-          Reset
-        </button>
-      </div>
       <FilterRow
         label="Instrument"
         filterKey="filterInstrument"
@@ -126,7 +128,26 @@ export function FeedControls({
           update={update}
         />
       ))}
-    </section>
+      <fieldset className="mb-0">
+        <legend className="mb-2 text-xs text-muted">Timeframes · match all selected</legend>
+        <div className="flex flex-wrap gap-1.5">
+          {TIMEFRAMES.map((timeframe) => (
+            <button
+              key={timeframe}
+              type="button"
+              aria-pressed={selectedTimeframes.includes(timeframe)}
+              onClick={() => toggleTimeframe(timeframe)}
+              className={cn(
+                "h-8 rounded-md border border-border bg-control px-2.5 text-xs text-muted transition hover:bg-control-hover hover:text-foreground",
+                selectedTimeframes.includes(timeframe) && "filter-chip-active",
+              )}
+            >
+              {timeframe}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+    </CollapsibleFilterPanel>
   );
 }
 

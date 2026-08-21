@@ -104,13 +104,13 @@ export async function getTradeSummaries(): Promise<Trade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(
-      "*, instrument:instruments(*), setup:setups(*), study_entries:study_entries(*)",
+      "*, instrument:instruments(*), setup:setups(*), images:trade_images(id,timeframe,position), study_entries:study_entries(*)",
     )
     .order("trade_date", { ascending: false })
     .order("entry_at", { ascending: false, nullsFirst: false });
   if (error) throw error;
   return (data ?? []).map((trade) =>
-    normalizeTrade({ ...trade, images: [] } as unknown as Trade),
+    normalizeTrade(trade as unknown as Trade),
   );
 }
 

@@ -13,7 +13,7 @@ import {
   isInstrumentGroup,
   type InstrumentGroup,
 } from "@/lib/trading/config";
-import { matchesResultFilter } from "@/lib/trading/filters";
+import { matchesResultFilter, matchesTimeframeFilter, parseTimeframeFilter } from "@/lib/trading/filters";
 import type { JournalMode } from "@/types/database";
 
 export default async function JournalPage({
@@ -56,6 +56,7 @@ export default async function JournalPage({
     (params.filterInstrument && isInstrumentGroup(params.filterInstrument)
       ? params.filterInstrument
       : undefined);
+  const selectedTimeframes = parseTimeframeFilter(params.timeframes);
   const matchesActiveFilters = (trade: (typeof allTrades)[number]) =>
     (!filterGroup ||
       (INSTRUMENT_GROUPS[filterGroup] as readonly string[]).includes(
@@ -73,7 +74,8 @@ export default async function JournalPage({
     (!params.session ||
       trade.session === params.session ||
       trade.study_entries.some((entry) => entry.session === params.session)) &&
-    matchesResultFilter(trade, params.result);
+    matchesResultFilter(trade, params.result) &&
+    matchesTimeframeFilter(trade, selectedTimeframes);
   const filteredTrades = allTrades.filter(matchesActiveFilters);
   const daySummaries = filteredTrades.filter(
     (trade) => trade.trade_date === dateKey,
