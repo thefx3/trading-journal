@@ -20,7 +20,7 @@ import {
   optimizeTradeChart,
 } from "@/lib/images/optimize-trade-chart";
 import { readTradingJournalMetadata, type TradingJournalImageMetadata } from "@/lib/images/trading-journal-metadata";
-import { composeTradeChart } from "@/lib/images/compose-trade-chart";
+import { composeTradeChart, overwriteTradeChartDate } from "@/lib/images/compose-trade-chart";
 import type {
   Direction,
   Instrument,
@@ -368,6 +368,34 @@ export function TradeForm({
   function removeChart(index: number) {
     revokeChartUrl(charts[index].url);
     setCharts(charts.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  async function changeTradeDate(nextDate: string) {
+    setDate(nextDate);
+    const composedCharts = charts.filter((chart) => chart.isComposed);
+    if (!nextDate || !composedCharts.length) return;
+    setOptimizing(true);
+    setUploadError(null);
+    try {
+      const rewritten = await Promise.all(
+        charts.map(async (chart) =>
+          chart.isComposed
+            ? overwriteTradeChartDate(chart.file, chart.capturePreset, nextDate)
+            : null,
+        ),
+      );
+      const next = charts.map((chart, index) => {
+        const file = rewritten[index];
+        if (!file) return chart;
+        revokeChartUrl(chart.url);
+        return { ...chart, file, url: createChartUrl(file) };
+      });
+      setCharts(next);
+    } catch {
+      setUploadError("The chart dates could not be updated. Please try again.");
+    } finally {
+      setOptimizing(false);
+    }
   }
 
   function changeMode(nextMode: JournalMode) {
@@ -829,7 +857,8 @@ export function TradeForm({
                 type="date"
                 max={`${zonedNow.year}-${zonedNow.month}-${zonedNow.day}`}
                 value={date}
-                onChange={(event) => setDate(event.target.value)}
+                onChange={(event) => void changeTradeDate(event.target.value)}
+                disabled={optimizing}
                 required
               />
             </Field>

@@ -3,6 +3,31 @@ export type ChartPreset = "standard" | "wide";
 const PRESETS = { standard: { captureRatio: 4 / 3, width: 1200, height: 1200 }, wide: { captureRatio: 16 / 9, width: 1200, height: 900 } } as const;
 function canvasBlob(canvas: HTMLCanvasElement) { return new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not render chart")), "image/webp", 0.9)); }
 function tradeDateLabel(value: string) { const [year, month, day] = value.split("-"); return `${day}/${month}/${year}`; }
+export async function overwriteTradeChartDate(source: File, presetId: ChartPreset, tradeDate: string) {
+  const preset = PRESETS[presetId];
+  const bitmap = await createImageBitmap(source);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  try {
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas is unavailable");
+    context.drawImage(bitmap, 0, 0);
+    const chartHeight = preset.width / preset.captureRatio;
+    const bandHeight = (preset.height - chartHeight) / 2;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, canvas.height - bandHeight, canvas.width, bandHeight);
+    context.fillStyle = "#3f3f46";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.font = "600 32px Inter, Segoe UI, sans-serif";
+    context.fillText(tradeDateLabel(tradeDate), canvas.width / 2, canvas.height - bandHeight / 2);
+    const blob = await canvasBlob(canvas);
+    return new File([blob], source.name.replace(/_\d{4}-\d{2}-\d{2}\.webp$/i, `_${tradeDate}.webp`), { type: "image/webp", lastModified: Date.now() });
+  } finally {
+    bitmap.close();
+  }
+}
 export async function composeTradeChart(source: File, crop: CropState, presetId: ChartPreset, symbol: string, timeframe: string, tradeDate: string) {
   const preset = PRESETS[presetId]; const bitmap = await createImageBitmap(source); const canvas = document.createElement("canvas"); canvas.width = preset.width; canvas.height = preset.height;
   try { const context = canvas.getContext("2d"); if (!context) throw new Error("Canvas is unavailable"); const chartHeight = preset.width / preset.captureRatio; const bandHeight = (preset.height - chartHeight) / 2; context.fillStyle = "#ffffff"; context.fillRect(0, 0, preset.width, preset.height); context.save(); const trimLeft = crop.trimLeft ?? 0, trimRight = crop.trimRight ?? 0, trimTop = crop.trimTop ?? 0, trimBottom = crop.trimBottom ?? 0; const clipX = preset.width * trimLeft / 100, clipY = bandHeight + chartHeight * trimTop / 100, clipWidth = preset.width * (100 - trimLeft - trimRight) / 100, clipHeight = chartHeight * (100 - trimTop - trimBottom) / 100; context.beginPath(); context.rect(clipX, clipY, clipWidth, clipHeight); context.clip(); const fit = Math.min(preset.width / bitmap.width, chartHeight / bitmap.height); const width = bitmap.width * fit * crop.cropZoom; const height = bitmap.height * fit * crop.cropZoom; const x = (preset.width - width) / 2 + crop.cropX / 100 * preset.width; const y = bandHeight + (chartHeight - height) / 2 + crop.cropY / 100 * chartHeight; context.imageSmoothingEnabled = true; context.imageSmoothingQuality = "high"; context.drawImage(bitmap, x, y, width, height); context.restore(); context.fillStyle = "#18181b"; context.textAlign = "center"; context.textBaseline = "middle"; context.font = "700 44px Inter, Segoe UI, sans-serif"; context.fillText(`${symbol} | ${timeframe}`, preset.width / 2, bandHeight / 2); context.fillStyle = "#3f3f46"; context.font = "600 32px Inter, Segoe UI, sans-serif"; context.fillText(tradeDateLabel(tradeDate), preset.width / 2, preset.height - bandHeight / 2); const blob = await canvasBlob(canvas); return new File([blob], `${symbol}_${timeframe}_${tradeDate}.webp`, { type: "image/webp", lastModified: Date.now() }); } finally { bitmap.close(); }
