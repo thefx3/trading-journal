@@ -53,8 +53,13 @@ type Chart = {
 type ExistingCrop = CropState & {
   id: string;
   url: string;
+  storagePath: string;
   imageType: string;
   timeframe: string;
+  capturePreset: "standard" | "wide";
+  replacementFile?: File;
+  sourceFile?: File;
+  sourceUrl?: string;
 };
 const MAX_CHARTS = 6;
 const MAX_CHART_SIZE = 10 * 1024 * 1024;
@@ -130,6 +135,7 @@ export function TradeForm({
 }) {
   const [state, action, pending] = useActionState(saveTrade, undefined);
   const fileInput = useRef<HTMLInputElement>(null);
+  const existingFilesInput = useRef<HTMLInputElement>(null);
   const now = new Date();
   const zonedNow = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", {
@@ -203,8 +209,10 @@ export function TradeForm({
       .map((image) => ({
         id: image.id,
         url: image.signed_url!,
+        storagePath: image.storage_path,
         imageType: image.image_type,
         timeframe: image.timeframe,
+        capturePreset: image.capture_preset ?? "standard",
         cropX: Number(image.crop_x ?? 0),
         cropY: Number(image.crop_y ?? 0),
         cropWidth: Number(image.crop_width ?? 100),
@@ -251,6 +259,61 @@ export function TradeForm({
     next.forEach((chart) => transfer.items.add(chart.file));
     if (fileInput.current) fileInput.current.files = transfer.files;
   }
+
+  function setExistingCharts(next: ExistingCrop[]) {
+    setExistingCrops(next);
+    const transfer = new DataTransfer();
+    next.forEach((chart) => {
+      if (chart.replacementFile) transfer.items.add(chart.replacementFile);
+    });
+    if (existingFilesInput.current)
+      existingFilesInput.current.files = transfer.files;
+  }
+
+  async function rewriteExistingChartDate(chart: ExistingCrop, tradeDate: string) {
+    const response = await fetch(chart.url);
+    if (!response.ok) throw new Error("Existing chart could not be loaded");
+    const source = new File([await response.blob()], `${chart.id}.webp`, { type: "image/webp" });
+    const rewritten = await overwriteTradeChartDate(source, chart.capturePreset, tradeDate);
+    return new File([rewritten], `${chart.id}.webp`, { type: "image/webp", lastModified: rewritten.lastModified });
+  }
+
+  async function loadExistingSource(chart: ExistingCrop) {
+    if (chart.sourceFile) return chart.sourceFile;
+    const response = await fetch(chart.url);
+    if (!response.ok) throw new Error("Existing chart could not be loaded");
+    const captured = new File([await response.blob()], `${chart.id}.webp`, { type: "image/webp" });
+    return extractCapturedChart(captured, chart.capturePreset);
+  }
+
+  useEffect(() => {
+    if (!trade?.id || !existingCrops.length) return;
+    let cancelled = false;
+    void Promise.resolve()
+      .then(() => {
+        if (!cancelled) setOptimizing(true);
+        return Promise.all(existingCrops.map(async (chart) => ({
+          replacementFile: await rewriteExistingChartDate(chart, trade.trade_date),
+          sourceFile: await loadExistingSource(chart),
+        })));
+      })
+      .then((prepared) => {
+        if (cancelled) return;
+        setExistingCharts(existingCrops.map((chart, index) => {
+          const { replacementFile, sourceFile } = prepared[index];
+          return { ...chart, replacementFile, sourceFile, url: createChartUrl(replacementFile), sourceUrl: createChartUrl(sourceFile) };
+        }));
+      })
+      .catch(() => {
+        if (!cancelled) setUploadError("The existing chart dates could not be prepared for editing.");
+      })
+      .finally(() => {
+        if (!cancelled) setOptimizing(false);
+      });
+    return () => { cancelled = true; };
+    // Existing charts only need normalization once when the edit form opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trade?.id]);
 
   async function addFiles(files: FileList | null, suppliedMetadata?: (TradingJournalImageMetadata | null)[]) {
     if (!files || optimizing) return;
@@ -373,7 +436,7 @@ export function TradeForm({
   async function changeTradeDate(nextDate: string) {
     setDate(nextDate);
     const composedCharts = charts.filter((chart) => chart.isComposed);
-    if (!nextDate || !composedCharts.length) return;
+    if (!nextDate || (!composedCharts.length && !existingCrops.length)) return;
     setOptimizing(true);
     setUploadError(null);
     try {
@@ -384,6 +447,9 @@ export function TradeForm({
             : null,
         ),
       );
+      const rewrittenExisting = await Promise.all(
+        existingCrops.map((chart) => rewriteExistingChartDate(chart, nextDate)),
+      );
       const next = charts.map((chart, index) => {
         const file = rewritten[index];
         if (!file) return chart;
@@ -391,6 +457,10 @@ export function TradeForm({
         return { ...chart, file, url: createChartUrl(file) };
       });
       setCharts(next);
+      setExistingCharts(existingCrops.map((chart, index) => {
+        revokeChartUrl(chart.url);
+        return { ...chart, replacementFile: rewrittenExisting[index], url: createChartUrl(rewrittenExisting[index]) };
+      }));
     } catch {
       setUploadError("The chart dates could not be updated. Please try again.");
     } finally {
@@ -440,10 +510,10 @@ export function TradeForm({
       : cropTarget
         ? existingCrops[cropTarget.index]
           ? {
-              src: existingCrops[cropTarget.index].url,
+              src: existingCrops[cropTarget.index].sourceUrl ?? existingCrops[cropTarget.index].url,
               crop: existingCrops[cropTarget.index],
-              preset: "standard" as const,
-              allowTrim: false,
+              preset: existingCrops[cropTarget.index].capturePreset,
+              allowTrim: true,
             }
           : null
         : null;
@@ -489,12 +559,32 @@ export function TradeForm({
         setOptimizing(false);
       }
     } else {
-      setExistingCrops((items) =>
-        items.map((item, index) =>
-          index === cropTarget.index ? { ...item, ...crop } : item,
-        ),
-      );
-      setCropTarget(null);
+      const target = existingCrops[cropTarget.index];
+      if (!target) return;
+      setOptimizing(true);
+      try {
+        const sourceFile = await loadExistingSource(target);
+        const composed = await composeTradeChart(
+          sourceFile,
+          crop,
+          target.capturePreset,
+          instrument,
+          target.timeframe,
+          date,
+        );
+        const replacementFile = new File([composed], `${target.id}.webp`, { type: "image/webp", lastModified: composed.lastModified });
+        revokeChartUrl(target.url);
+        setExistingCharts(existingCrops.map((item, index) =>
+          index === cropTarget.index
+            ? { ...item, replacementFile, sourceFile, url: createChartUrl(replacementFile), ...DEFAULT_CROP }
+            : item,
+        ));
+        setCropTarget(null);
+      } catch {
+        setUploadError("This existing chart could not be recomposed. Please try again.");
+      } finally {
+        setOptimizing(false);
+      }
     }
   }
 
@@ -557,6 +647,7 @@ export function TradeForm({
           name="originalSetupId"
           value={trade?.setup_id ?? ""}
         />
+        <input ref={existingFilesInput} type="file" name="existingCharts" multiple hidden />
         <input type="hidden" name="journalMode" value={mode} />
         <input type="hidden" name="setupFound" value={String(setupFound)} />
         <input

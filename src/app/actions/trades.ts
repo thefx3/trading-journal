@@ -35,6 +35,9 @@ export async function saveTrade(
   const files = formData
     .getAll("charts")
     .filter((v): v is File => v instanceof File && v.size > 0);
+  const existingFiles = formData
+    .getAll("existingCharts")
+    .filter((v): v is File => v instanceof File && v.size > 0);
   const todayParts = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", {
       timeZone: input.timezone,
@@ -64,7 +67,7 @@ export async function saveTrade(
       return { error: "Archived setups cannot be assigned to new trades." };
   }
   if (
-    files.some(
+    [...files, ...existingFiles].some(
       (file) => !FILE_TYPES.has(file.type) || file.size > MAX_FILE_SIZE,
     )
   )
@@ -109,6 +112,9 @@ export async function saveTrade(
     existingImageMetaSchema.safeParse(existingImageMeta);
   if (!existingMetaResult.success)
     return { error: "Existing chart crop metadata is invalid." };
+  const existingIds = new Set(existingMetaResult.data.map((meta) => meta.id));
+  if (existingFiles.some((file) => !existingIds.has(file.name.replace(/\.webp$/i, ""))))
+    return { error: "Existing chart replacement metadata is invalid." };
   let studyEntries: unknown = [];
   try {
     studyEntries = JSON.parse(String(formData.get("studyEntries") || "[]"));
@@ -188,6 +194,25 @@ export async function saveTrade(
   const uploaded: string[] = [];
   const imageRows: Record<string, unknown>[] = [];
   try {
+    if (existingFiles.length) {
+      const replacementIds = existingFiles.map((file) => file.name.replace(/\.webp$/i, ""));
+      const { data: existingRows, error: existingRowsError } = await supabase
+        .from("trade_images")
+        .select("id, storage_path")
+        .eq("trade_id", tradeId)
+        .in("id", replacementIds);
+      if (existingRowsError || existingRows?.length !== existingFiles.length)
+        throw existingRowsError ?? new Error("One or more existing charts are unavailable.");
+      const rowsById = new Map(existingRows.map((row) => [row.id, row]));
+      for (const file of existingFiles) {
+        const row = rowsById.get(file.name.replace(/\.webp$/i, ""));
+        if (!row) throw new Error("Existing chart replacement is incomplete.");
+        const { error } = await supabase.storage
+          .from("trade-charts")
+          .upload(row.storage_path, file, { cacheControl: "0", contentType: file.type, upsert: true });
+        if (error) throw error;
+      }
+    }
     const uploadResults = await Promise.all(files.map(async (file, i) => {
       const ext = file.name.split(".").pop()?.toLowerCase() || "png";
       const path = `${user.id}/${tradeId}/${crypto.randomUUID()}.${ext}`;
