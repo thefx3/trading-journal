@@ -41,6 +41,12 @@ export function TradesExplorer({
     visible = visible.filter((trade) => trade.direction === filters.direction);
   if (filters.result)
     visible = visible.filter((trade) => trade.result === filters.result);
+  if (filters.validity)
+    visible = visible.filter((trade) => trade.setup_validity === filters.validity);
+  if (filters.execution)
+    visible = visible.filter((trade) => trade.execution_quality === filters.execution);
+  if (filters.status)
+    visible = visible.filter((trade) => trade.trade_status === filters.status);
   if (filters.session)
     visible = visible.filter((trade) => trade.session === filters.session);
   const selectedTimeframes = parseTimeframeFilter(filters.timeframes);
@@ -64,6 +70,9 @@ export function TradesExplorer({
     ["instrument", "Instrument", instruments],
     ["direction", "Direction", ["long", "short"]],
     ["result", "Result", ["win", "loss", "be"]],
+    ["validity", "Setup validity", ["valid", "invalid"]],
+    ["execution", "Execution", ["good", "bad"]],
+    ["status", "Status", ["taken", "missed"]],
     [
       "session",
       "Session",

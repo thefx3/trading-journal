@@ -1,5 +1,9 @@
 export type Direction = "long" | "short";
 export type TradeResult = "win" | "loss" | "be" | "open";
+export type SetupValidity = "valid" | "invalid";
+export type ExecutionQuality = "good" | "bad";
+export type TradeStatus = "taken" | "missed";
+export type ExecutionError = "hesitation" | "chase" | "oversize" | "early_entry" | "late_entry" | "extra_trade" | "other";
 export type JournalMode = "live" | "study" | "practice";
 export type Visibility = "private" | "followers" | "public";
 export type TradingSession = "asia" | "london" | "new_york_am" | "new_york_lunch" | "new_york_pm" | "other";
@@ -70,6 +74,11 @@ export interface Trade {
   planned_rr: number | null;
   result: TradeResult | null;
   realized_r: number | null;
+  setup_validity: SetupValidity | null;
+  execution_quality: ExecutionQuality | null;
+  trade_status: TradeStatus | null;
+  theoretical_r: number | null;
+  execution_error: ExecutionError | null;
   journal_mode: JournalMode;
   setup_found: boolean;
   session: TradingSession;

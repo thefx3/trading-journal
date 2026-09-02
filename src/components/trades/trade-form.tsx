@@ -23,11 +23,15 @@ import { readTradingJournalMetadata, type TradingJournalImageMetadata } from "@/
 import { composeTradeChart, overwriteTradeChartDate } from "@/lib/images/compose-trade-chart";
 import type {
   Direction,
+  ExecutionError,
+  ExecutionQuality,
   Instrument,
   JournalMode,
   Setup,
   Trade,
   TradeResult,
+  TradeStatus,
+  SetupValidity,
 } from "@/types/database";
 import {
   DEFAULT_CROP,
@@ -67,6 +71,15 @@ const CHART_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const SETUP_OPTIONS: readonly (readonly [boolean, string])[] = [
   [true, "Setup found"],
   [false, "No valid setup"],
+];
+const EXECUTION_ERRORS: readonly [ExecutionError, string][] = [
+  ["hesitation", "Hesitation"],
+  ["chase", "Chase"],
+  ["oversize", "Oversize"],
+  ["early_entry", "Early entry"],
+  ["late_entry", "Late entry"],
+  ["extra_trade", "Extra trade"],
+  ["other", "Other"],
 ];
 const TRADING_EXTENSION_ID =
   process.env.NEXT_PUBLIC_TRADING_EXTENSION_ID ??
@@ -118,6 +131,42 @@ function requestCopiedSession() {
       },
     );
   });
+}
+
+function ChoiceField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: readonly (readonly [string, string])[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-[13px] font-medium text-foreground">{label}</legend>
+      <div className="grid grid-cols-2 gap-2">
+        {options.map(([option, text]) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={value === option}
+            onClick={() => onChange(option)}
+            className={cn(
+              "h-10 rounded-md border text-sm transition",
+              value === option
+                ? "border-primary/60 bg-primary/10 text-primary"
+                : "border-border bg-control/30 text-muted hover:bg-control-hover",
+            )}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
 }
 
 export function TradeForm({
@@ -183,6 +232,11 @@ export function TradeForm({
   const [realized, setRealized] = useState<number | null>(
     trade?.realized_r ?? 2,
   );
+  const [setupValidity, setSetupValidity] = useState<SetupValidity>(trade?.setup_validity ?? "valid");
+  const [executionQuality, setExecutionQuality] = useState<ExecutionQuality>(trade?.execution_quality ?? "good");
+  const [tradeStatus, setTradeStatus] = useState<TradeStatus>(trade?.trade_status ?? "taken");
+  const [theoreticalR, setTheoreticalR] = useState<number | null>(trade?.theoretical_r ?? null);
+  const [executionError, setExecutionError] = useState<ExecutionError | null>(trade?.execution_error ?? null);
   const [sessionOverride, setSessionOverride] = useState(
     trade?.session_override ?? false,
   );
@@ -486,6 +540,28 @@ export function TradeForm({
       nextResult === "win" ? (rr ?? 0) : nextResult === "loss" ? -1 : 0,
     );
   }
+  function changeExecutionQuality(next: ExecutionQuality) {
+    setExecutionQuality(next);
+    if (next === "good") setExecutionError(null);
+  }
+  function changeStatus(next: TradeStatus) {
+    setTradeStatus(next);
+    if (next === "missed") {
+      setExecutionQuality("bad");
+      setResult(null);
+      setRealized(0);
+    } else if (result == null) {
+      setResult("win");
+      setRealized(rr ?? 2);
+    }
+  }
+  function changeSetupValidity(next: SetupValidity) {
+    setSetupValidity(next);
+    if (next === "invalid") {
+      setExecutionQuality("bad");
+      if (tradeStatus === "missed") changeStatus("taken");
+    }
+  }
   function chooseSetup(found: boolean) {
     setSetupFound(found);
     if (!found) {
@@ -658,6 +734,10 @@ export function TradeForm({
         <input type="hidden" name="instrumentSymbol" value={instrument} />
         <input type="hidden" name="timezone" value={timezone} />
         <input type="hidden" name="direction" value={direction ?? ""} />
+        <input type="hidden" name="setupValidity" value={isStudy ? "" : setupValidity} />
+        <input type="hidden" name="executionQuality" value={isStudy ? "" : executionQuality} />
+        <input type="hidden" name="tradeStatus" value={isStudy ? "" : tradeStatus} />
+        <input type="hidden" name="executionError" value={isStudy ? "" : executionError ?? ""} />
         <input
           type="hidden"
           name="sessionOverride"
@@ -926,6 +1006,29 @@ export function TradeForm({
               </div>
             </div>
           ) : null}
+          {!isStudy ? (
+            <section className="mt-6 rounded-lg border border-border bg-surface/55 p-4">
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold uppercase tracking-wider">Review</h2>
+                <p className="mt-1 text-xs text-muted">Separate the quality of the model from the quality of its execution.</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <ChoiceField label="Setup" value={setupValidity} options={[["valid", "Valid"], ["invalid", "Invalid"]]} onChange={(value) => changeSetupValidity(value as SetupValidity)} />
+                <ChoiceField label="Execution" value={executionQuality} options={[["good", "Good"], ["bad", "Bad"]]} onChange={(value) => changeExecutionQuality(value as ExecutionQuality)} />
+                <ChoiceField label="Status" value={tradeStatus} options={[["taken", "Taken"], ["missed", "Missed"]]} onChange={(value) => changeStatus(value as TradeStatus)} />
+              </div>
+              {executionQuality === "bad" ? (
+                <div className="mt-4">
+                  <Field label="Primary execution error" hint="Required">
+                    <Select value={executionError ?? ""} onChange={(event) => setExecutionError(event.target.value as ExecutionError)} required>
+                      <option value="" disabled>Choose a reason</option>
+                      {EXECUTION_ERRORS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </Select>
+                  </Field>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
           <h2 className="mb-6 mt-7 text-sm font-semibold uppercase tracking-wider">
             {isStudy ? "Analysis details" : "Trade details"}
           </h2>
@@ -1035,7 +1138,7 @@ export function TradeForm({
                     ))}
                   </Select>
                 </Field>
-                {!isStudy ? (
+                {!isStudy && tradeStatus === "taken" ? (
                   <>
                     <Field label="Result">
                       <Select
@@ -1048,7 +1151,6 @@ export function TradeForm({
                         <option value="win">Win</option>
                         <option value="loss">Loss</option>
                         <option value="be">Break even</option>
-                        <option value="open">Open</option>
                       </Select>
                     </Field>
                     <Field label="Realized R" hint="Editable">
@@ -1067,12 +1169,29 @@ export function TradeForm({
                       />
                     </Field>
                   </>
+                ) : !isStudy ? (
+                  <>
+                    <Field label="Actual R" hint="Missed setups never affect P&L">
+                      <Input value="0" disabled />
+                    </Field>
+                    <Field label="Theoretical R" hint="Required">
+                      <Input name="theoreticalR" type="number" step="0.1" value={theoreticalR ?? ""} onChange={(event) => setTheoreticalR(event.target.value ? Number(event.target.value) : null)} required />
+                    </Field>
+                    <input type="hidden" name="result" value="" />
+                    <input type="hidden" name="realizedR" value="0" />
+                  </>
                 ) : (
                   <>
                     <input type="hidden" name="result" value="" />
                     <input type="hidden" name="realizedR" value="" />
+                    <input type="hidden" name="theoreticalR" value="" />
                   </>
                 )}
+                {!isStudy && tradeStatus === "taken" ? (
+                  <Field label="Theoretical R" hint="Optional model outcome">
+                    <Input name="theoreticalR" type="number" step="0.1" value={theoreticalR ?? ""} onChange={(event) => setTheoreticalR(event.target.value ? Number(event.target.value) : null)} />
+                  </Field>
+                ) : null}
               </div>
             </>
           ) : (
@@ -1080,6 +1199,7 @@ export function TradeForm({
               <input type="hidden" name="plannedRr" value="" />
               <input type="hidden" name="result" value="" />
               <input type="hidden" name="realizedR" value="" />
+              <input type="hidden" name="theoreticalR" value="" />
             </>
           )}
           {isStudy ? (

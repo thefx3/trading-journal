@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
 import { notFound } from "next/navigation";
-import { deleteTrade, deleteTradeImage } from "@/app/actions/trades";
+import { deleteTrade } from "@/app/actions/trades";
+import { FeedImageGallery } from "@/components/journal/feed-image-gallery";
 import { PageHeader } from "@/components/layout/page-header";
 import { JournalModeBadge } from "@/components/trades/journal-mode";
 import { RValue } from "@/components/trades/result";
-import { TradeChartImage } from "@/components/trades/trade-chart-image";
+import { EXECUTION_ERROR_LABELS, TradeReviewBadges } from "@/components/trades/trade-review-badges";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { SESSION_LABELS } from "@/lib/trading/config";
@@ -115,6 +115,7 @@ export default async function TradePage({
           </>
         ) : (
           <>
+            <TradeReviewBadges trade={trade} />
             <Detail label="Planned RR">1:{Number(trade.planned_rr)}</Detail>
             <Detail label="Result">
               <span
@@ -126,7 +127,7 @@ export default async function TradePage({
                       : "text-muted"
                 }
               >
-                {trade.result === "be" ? "BE" : trade.result?.toUpperCase()}
+                {trade.trade_status === "missed" ? "N/A" : trade.result === "be" ? "BE" : trade.result?.toUpperCase()}
               </span>
             </Detail>
             <Detail label="Realized">
@@ -136,6 +137,10 @@ export default async function TradePage({
                 "—"
               )}
             </Detail>
+            <Detail label="Model R">
+              {trade.theoretical_r != null ? <RValue value={Number(trade.theoretical_r)} /> : "—"}
+            </Detail>
+            {trade.execution_error ? <Detail label="Primary error">{EXECUTION_ERROR_LABELS[trade.execution_error]}</Detail> : null}
             <Detail label="Session">{SESSION_LABELS[trade.session]}</Detail>
           </>
         )}
@@ -152,37 +157,7 @@ export default async function TradePage({
       <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section>
           {trade.images.length ? (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {trade.images.map((image) => (
-                <figure
-                  key={image.id}
-                  className="relative overflow-hidden rounded-lg border border-border bg-surface"
-                >
-                  <form
-                    action={deleteTradeImage}
-                    className="absolute right-2 top-2 z-10"
-                  >
-                    <input type="hidden" name="imageId" value={image.id} />
-                    <input type="hidden" name="tradeId" value={id} />
-                    <button
-                      aria-label="Delete chart"
-                      className="grid h-7 w-7 cursor-pointer place-items-center rounded bg-background/90 text-negative transition hover:bg-negative/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </form>
-                  <TradeChartImage
-                    image={image}
-                    alt={`${image.image_type} ${image.timeframe} chart`}
-                    sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 35vw"
-                    frameAspect={
-                      image.capture_preset === "standard" ? "1:1" : "4:3"
-                    }
-                    className="rounded-none"
-                  />
-                </figure>
-              ))}
-            </div>
+            <FeedImageGallery images={trade.images} variant="detail" tradeId={id} />
           ) : (
             <div className="rounded-lg border border-dashed border-border py-20 text-center text-sm text-muted">
               No charts attached.

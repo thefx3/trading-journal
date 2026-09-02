@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { JournalModeBadge } from "@/components/trades/journal-mode";
 import { RValue } from "@/components/trades/result";
+import { TradeReviewBadges } from "@/components/trades/trade-review-badges";
 import { FeedImageGallery } from "@/components/journal/feed-image-gallery";
 import { SESSION_LABELS } from "@/lib/trading/config";
 import { formatTimeInZone } from "@/lib/trading/format-time";
@@ -45,11 +46,17 @@ export function FeedCard({
               <Badge className="border-border bg-control text-secondary">
                 {trade.setup?.name ?? "No model"}
               </Badge>
+              {!isStudy ? <TradeReviewBadges trade={trade} /> : null}
             </div>
             {isStudy ? (
               <span className="text-sm font-semibold text-study">
                 {trade.study_entries.length} entries
               </span>
+            ) : trade.trade_status === "missed" ? (
+              <div className="text-right">
+                <span className="block text-sm font-semibold text-amber-400">MISSED</span>
+                {trade.theoretical_r != null ? <span className="font-mono text-xs text-muted">Model {Number(trade.theoretical_r) > 0 ? "+" : ""}{Number(trade.theoretical_r)}R</span> : null}
+              </div>
             ) : trade.realized_r != null ? (
               <RValue value={trade.realized_r} className="text-lg" />
             ) : null}

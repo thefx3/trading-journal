@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesTimeframeFilter, parseTimeframeFilter } from "./filters";
+import { matchesResultFilter, matchesTimeframeFilter, parseTimeframeFilter } from "./filters";
 import type { Trade } from "../../types/database";
 
 function tradeWithTimeframes(...timeframes: string[]) {
@@ -20,5 +20,12 @@ describe("timeframe filters", () => {
 
   it("does not filter when nothing is selected", () => {
     expect(matchesTimeframeFilter(tradeWithTimeframes(), [])).toBe(true);
+  });
+});
+
+describe("result filters", () => {
+  it("never classifies a missed setup as break even", () => {
+    const trade = { trade_status: "missed", realized_r: 0, result: null, journal_mode: "live", study_entries: [] } as unknown as Trade;
+    expect(matchesResultFilter(trade, "be")).toBe(false);
   });
 });

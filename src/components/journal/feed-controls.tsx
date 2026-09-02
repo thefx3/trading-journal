@@ -41,6 +41,33 @@ const STATIC_FILTERS = [
       ["be", "BE"],
     ],
   },
+  {
+    key: "validity",
+    label: "Setup validity",
+    values: [
+      ["", "All"],
+      ["valid", "Valid"],
+      ["invalid", "Invalid"],
+    ],
+  },
+  {
+    key: "execution",
+    label: "Execution",
+    values: [
+      ["", "All"],
+      ["good", "Good"],
+      ["bad", "Bad"],
+    ],
+  },
+  {
+    key: "status",
+    label: "Status",
+    values: [
+      ["", "All"],
+      ["taken", "Taken"],
+      ["missed", "Missed"],
+    ],
+  },
 ] as const;
 
 export function FeedControls({

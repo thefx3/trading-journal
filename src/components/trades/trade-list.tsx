@@ -8,6 +8,7 @@ import type { Trade } from "@/types/database";
 import { JournalModeBadge } from "./journal-mode";
 import { RValue } from "./result";
 import { TradeChartImage } from "./trade-chart-image";
+import { TradeReviewBadges } from "./trade-review-badges";
 
 export function TradeList({
   trades,
@@ -72,6 +73,7 @@ export function TradeList({
                       {direction}
                     </Badge>
                   ) : null}
+                  {trade.journal_mode !== "study" ? <TradeReviewBadges trade={trade} /> : null}
                 </div>
                 <p className="mt-1 truncate text-xs text-secondary">
                   {session
@@ -86,7 +88,12 @@ export function TradeList({
             <span className="hidden truncate text-sm text-secondary sm:block">
               {trade.setup?.name ?? "No model"}
             </span>
-            {trade.realized_r != null ? (
+            {trade.trade_status === "missed" ? (
+              <div className="text-right">
+                <span className="block text-xs font-semibold text-amber-400">MISSED</span>
+                {trade.theoretical_r != null ? <span className="mt-1 block font-mono text-xs text-muted">Model {Number(trade.theoretical_r) > 0 ? "+" : ""}{Number(trade.theoretical_r)}R</span> : null}
+              </div>
+            ) : trade.realized_r != null ? (
               <RValue value={trade.realized_r} className="text-right" />
             ) : trade.journal_mode === "study" ? (
               <span className="text-right text-xs font-medium text-study">

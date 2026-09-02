@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { deleteTradeImage } from "@/app/actions/trades";
 import { TradeChartImage } from "@/components/trades/trade-chart-image";
 import type { TradeImage } from "@/types/database";
 
@@ -17,7 +18,7 @@ const labels = {
   other: "Chart",
 } as const;
 
-export function FeedImageGallery({ images }: { images: TradeImage[] }) {
+export function FeedImageGallery({ images, variant = "feed", tradeId }: { images: TradeImage[]; variant?: "feed" | "detail"; tradeId?: string }) {
   const [open, setOpen] = useState(false);
   const [pageStart, setPageStart] = useState(0);
   const [previewStart, setPreviewStart] = useState(0);
@@ -35,6 +36,10 @@ export function FeedImageGallery({ images }: { images: TradeImage[] }) {
         value + MODAL_PAGE_SIZE,
       ),
     );
+  function openAt(index: number) {
+    setPageStart(Math.floor(index / MODAL_PAGE_SIZE) * MODAL_PAGE_SIZE);
+    setOpen(true);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -60,6 +65,26 @@ export function FeedImageGallery({ images }: { images: TradeImage[] }) {
 
   return (
     <>
+      {variant === "detail" ? (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {images.map((image, index) => (
+            <figure key={image.id} className="relative overflow-hidden rounded-lg border border-border bg-surface">
+              {tradeId ? (
+                <form action={deleteTradeImage} className="absolute right-2 top-2 z-10">
+                  <input type="hidden" name="imageId" value={image.id} />
+                  <input type="hidden" name="tradeId" value={tradeId} />
+                  <button aria-label="Delete chart" className="grid h-7 w-7 cursor-pointer place-items-center rounded bg-background/90 text-negative transition hover:bg-negative/10">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </form>
+              ) : null}
+              <button type="button" aria-label={`Open ${labels[image.image_type]} chart gallery`} onClick={() => openAt(index)} className="block w-full cursor-zoom-in text-left">
+                <TradeChartImage image={image} alt={`${image.image_type} ${image.timeframe} chart`} sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 35vw" frameAspect={image.capture_preset === "standard" ? "1:1" : "4:3"} className="rounded-none" interactive={false} />
+              </button>
+            </figure>
+          ))}
+        </div>
+      ) : (
       <div className="relative mx-auto mt-3 w-full px-7">
         {previewStart > 0 ? (
           <button
@@ -83,11 +108,7 @@ export function FeedImageGallery({ images }: { images: TradeImage[] }) {
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                const absoluteIndex = previewStart + index;
-                setPageStart(
-                  Math.floor(absoluteIndex / MODAL_PAGE_SIZE) * MODAL_PAGE_SIZE,
-                );
-                setOpen(true);
+                openAt(previewStart + index);
               }}
             >
               <TradeChartImage
@@ -120,6 +141,7 @@ export function FeedImageGallery({ images }: { images: TradeImage[] }) {
           </button>
         ) : null}
       </div>
+      )}
       {open ? (
         <div
           role="dialog"

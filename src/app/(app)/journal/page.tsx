@@ -74,6 +74,9 @@ export default async function JournalPage({
     (!params.session ||
       trade.session === params.session ||
       trade.study_entries.some((entry) => entry.session === params.session)) &&
+    (!params.validity || trade.setup_validity === params.validity) &&
+    (!params.execution || trade.execution_quality === params.execution) &&
+    (!params.status || trade.trade_status === params.status) &&
     matchesResultFilter(trade, params.result) &&
     matchesTimeframeFilter(trade, selectedTimeframes);
   const filteredTrades = allTrades.filter(matchesActiveFilters);

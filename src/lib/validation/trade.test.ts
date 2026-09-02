@@ -14,6 +14,11 @@ const baseTrade = {
   plannedRr: "2",
   result: "win",
   realizedR: "2",
+  setupValidity: "valid",
+  executionQuality: "good",
+  tradeStatus: "taken",
+  theoreticalR: "2",
+  executionError: "",
   session: "new_york_am",
   sessionOverride: "false",
   notes: "",
@@ -26,6 +31,21 @@ describe("tradeSchema", () => {
 
   it("requires execution fields for Live and Practice", () => {
     const result = tradeSchema.safeParse({ ...baseTrade, journalMode: "practice", entryTime: "", direction: "", plannedRr: "", result: "", realizedR: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a missed valid setup without a P&L result", () => {
+    const result = tradeSchema.safeParse({ ...baseTrade, setupValidity: "valid", executionQuality: "bad", tradeStatus: "missed", executionError: "hesitation", result: "", realizedR: "0", theoreticalR: "2" });
+    expect(result.success).toBe(true);
+  });
+
+  it("requires a reason for bad execution", () => {
+    const result = tradeSchema.safeParse({ ...baseTrade, executionQuality: "bad", executionError: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a missed invalid setup", () => {
+    const result = tradeSchema.safeParse({ ...baseTrade, setupValidity: "invalid", executionQuality: "bad", tradeStatus: "missed", executionError: "hesitation", result: "", realizedR: "0" });
     expect(result.success).toBe(false);
   });
 });
