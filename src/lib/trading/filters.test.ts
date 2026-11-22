@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { matchesResultFilter, matchesTimeframeFilter, parseTimeframeFilter } from "./filters";
+import {
+  matchesResultFilter,
+  matchesTimeframeFilter,
+  parseTimeframeFilter,
+} from "./filters";
 import type { Trade } from "../../types/database";
 
 function tradeWithTimeframes(...timeframes: string[]) {
@@ -8,7 +12,10 @@ function tradeWithTimeframes(...timeframes: string[]) {
 
 describe("timeframe filters", () => {
   it("normalizes, validates and deduplicates URL values", () => {
-    expect(parseTimeframeFilter("1h,30MIN,1H,invalid")).toEqual(["1H", "30min"]);
+    expect(parseTimeframeFilter("1h,30MIN,1H,invalid")).toEqual([
+      "1H",
+      "30min",
+    ]);
   });
 
   it("matches every selected timeframe, not merely one", () => {
@@ -24,8 +31,14 @@ describe("timeframe filters", () => {
 });
 
 describe("result filters", () => {
-  it("never classifies a missed setup as break even", () => {
-    const trade = { trade_status: "missed", realized_r: 0, result: null, journal_mode: "live", study_entries: [] } as unknown as Trade;
-    expect(matchesResultFilter(trade, "be")).toBe(false);
+  it("filters missed opportunities by their informative outcome", () => {
+    const trade = {
+      trade_status: "missed",
+      realized_r: 2,
+      result: "win",
+      journal_mode: "live",
+      study_entries: [],
+    } as unknown as Trade;
+    expect(matchesResultFilter(trade, "win")).toBe(true);
   });
 });

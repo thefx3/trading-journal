@@ -93,7 +93,7 @@ export function CalendarExplorer({
           onChange={(month) => update({ month })}
         />
       </div>
-      <TradeCalendar trades={visible} month={month} />
+      <TradeCalendar trades={visible} summaryTrades={trades} month={month} />
     </>
   );
 }

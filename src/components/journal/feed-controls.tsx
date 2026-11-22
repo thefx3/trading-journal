@@ -3,10 +3,10 @@
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { INSTRUMENT_GROUPS, TIMEFRAMES, type InstrumentGroup } from "@/lib/trading/config";
+import { TIMEFRAMES } from "@/lib/trading/config";
 import { parseTimeframeFilter } from "@/lib/trading/filters";
 import { cn } from "@/lib/utils";
-import type { JournalMode, Setup } from "@/types/database";
+import type { JournalMode } from "@/types/database";
 import { CollapsibleFilterPanel } from "@/components/ui/collapsible-filter-panel";
 
 const STATIC_FILTERS = [
@@ -43,7 +43,7 @@ const STATIC_FILTERS = [
   },
   {
     key: "validity",
-    label: "Setup validity",
+    label: "Validity",
     values: [
       ["", "All"],
       ["valid", "Valid"],
@@ -72,13 +72,11 @@ const STATIC_FILTERS = [
 
 export function FeedControls({
   query,
-  lockedInstrument,
-  setups,
+  instruments,
   activeMode,
 }: {
   query: URLSearchParams;
-  lockedInstrument?: InstrumentGroup;
-  setups: Setup[];
+  instruments: string[];
   activeMode: JournalMode | "all";
 }) {
   const router = useRouter();
@@ -110,39 +108,35 @@ export function FeedControls({
     const selected = new Set<string>(parseTimeframeFilter(values.timeframes));
     if (selected.has(timeframe)) selected.delete(timeframe);
     else selected.add(timeframe);
-    update("timeframes", TIMEFRAMES.filter((item) => selected.has(item)).join(","));
+    update(
+      "timeframes",
+      TIMEFRAMES.filter((item) => selected.has(item)).join(","),
+    );
   }
-  const instruments: [string, string][] = [
+  const instrumentOptions: [string, string][] = [
     ["", "All"],
-    ...Object.keys(INSTRUMENT_GROUPS).map(
-      (value) => [value, value] as [string, string],
-    ),
-  ];
-  const setupOptions: [string, string][] = [
-    ["", "All"],
-    ["none", "No model"],
-    ...setups.map((setup) => [setup.id, setup.name] as [string, string]),
+    ...instruments.map((value) => [value, value] as [string, string]),
   ];
   const selectedTimeframes = parseTimeframeFilter(values.timeframes);
   return (
     <CollapsibleFilterPanel
       storageKey="trading-journal:journal-filters-open"
       className={cn("transition-opacity", pending && "opacity-70")}
-      actions={<button type="button" onClick={reset} className="text-xs text-muted hover:text-primary">Reset</button>}
+      actions={
+        <button
+          type="button"
+          onClick={reset}
+          className="text-xs text-muted hover:text-primary"
+        >
+          Reset
+        </button>
+      }
     >
       <FilterRow
         label="Instrument"
-        filterKey="filterInstrument"
-        values={instruments}
-        selected={lockedInstrument ?? values.filterInstrument ?? ""}
-        disabled={Boolean(lockedInstrument)}
-        update={update}
-      />
-      <FilterRow
-        label="Setup"
-        filterKey="setup"
-        values={setupOptions}
-        selected={values.setup ?? ""}
+        filterKey="instrument"
+        values={instrumentOptions}
+        selected={values.instrument ?? ""}
         update={update}
       />
       {STATIC_FILTERS.map((option) => (
@@ -156,7 +150,9 @@ export function FeedControls({
         />
       ))}
       <fieldset className="mb-0">
-        <legend className="mb-2 text-xs text-muted">Timeframes · match all selected</legend>
+        <legend className="mb-2 text-xs text-muted">
+          Timeframes · match all selected
+        </legend>
         <div className="flex flex-wrap gap-1.5">
           {TIMEFRAMES.map((timeframe) => (
             <button

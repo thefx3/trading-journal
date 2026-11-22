@@ -1,4 +1,63 @@
-import { calculateMetrics, calculateStudyMetrics } from "@/lib/trading/metrics";
+import { calculateMetrics } from "@/lib/trading/metrics";
 import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/database";
-export function MonthlyStats({ trades }: { trades: Trade[] }) { const live = calculateMetrics(trades.filter((trade) => trade.journal_mode === "live")); const practice = calculateMetrics(trades.filter((trade) => trade.journal_mode === "practice")); const study = calculateStudyMetrics(trades); const cards = [{ label: "Total entries", value: trades.length, detail: `${live.total} live · ${practice.total} practice · ${study.total} study`, accent: "border-t-blue-500", valueClass: "text-blue-500" }, { label: "Live win rate", value: `${live.winRate.toFixed(0)}%`, detail: `${live.wins}W / ${live.losses}L / ${live.breakEven}BE`, accent: "border-t-emerald-500", valueClass: "text-emerald-500" }, { label: "Live total R", value: `${live.totalR > 0 ? "+" : ""}${live.totalR.toFixed(1)}R`, detail: `${live.averageR.toFixed(2)}R average`, accent: live.totalR < 0 ? "border-t-red-500" : "border-t-emerald-500", valueClass: live.totalR < 0 ? "text-red-500" : "text-emerald-500" }, { label: "Practice total R", value: `${practice.totalR > 0 ? "+" : ""}${practice.totalR.toFixed(1)}R`, detail: `${practice.winRate.toFixed(0)}% win rate`, accent: "border-t-indigo-500", valueClass: "text-indigo-400" }, { label: "Profit factor", value: Number.isFinite(live.profitFactor) ? live.profitFactor.toFixed(2) : "∞", detail: "Live performance", accent: "border-t-amber-500", valueClass: "text-amber-500" }]; return <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{cards.map((card) => <section key={card.label} className={cn("surface border-t-2 p-4", card.accent)}><p className="text-xs text-muted">{card.label}</p><strong className={cn("mt-2 block font-mono text-xl font-medium", card.valueClass)}>{card.value}</strong><p className="mt-1 text-xs text-subtle">{card.detail}</p></section>)}</div>; }
+
+export function MonthlyStats({ trades }: { trades: Trade[] }) {
+  const liveTrades = trades.filter(
+    (trade) => trade.journal_mode === "live" && trade.trade_status !== "missed",
+  );
+  const metrics = calculateMetrics(liveTrades);
+  const daily = liveTrades.reduce(
+    (map, trade) =>
+      map.set(
+        trade.trade_date,
+        (map.get(trade.trade_date) ?? 0) + Number(trade.realized_r ?? 0),
+      ),
+    new Map<string, number>(),
+  );
+  const greenDays = [...daily.values()].filter((value) => value > 0).length;
+  const cards = [
+    {
+      label: "Cumulative R",
+      value: `${metrics.totalR > 0 ? "+" : ""}${metrics.totalR.toFixed(1)}R`,
+      detail: "Live · missed excluded",
+      valueClass: metrics.totalR < 0 ? "text-negative" : "text-positive",
+    },
+    {
+      label: "Trades",
+      value: metrics.total,
+      detail: `${metrics.wins}W · ${metrics.losses}L · ${metrics.breakEven}BE`,
+      valueClass: "text-foreground",
+    },
+    {
+      label: "Win rate",
+      value: `${metrics.winRate.toFixed(0)}%`,
+      detail: "Taken live trades",
+      valueClass: "text-primary",
+    },
+    {
+      label: "Green days",
+      value: `${greenDays}/${daily.size}`,
+      detail: "Positive R / days traded",
+      valueClass: "text-positive",
+    },
+  ];
+  return (
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map((card) => (
+        <section key={card.label} className="surface p-4">
+          <p className="text-xs text-muted">{card.label}</p>
+          <strong
+            className={cn(
+              "mt-2 block font-mono text-xl font-medium",
+              card.valueClass,
+            )}
+          >
+            {card.value}
+          </strong>
+          <p className="mt-1 text-xs text-subtle">{card.detail}</p>
+        </section>
+      ))}
+    </div>
+  );
+}

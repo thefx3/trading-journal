@@ -5,10 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   existingImageMetaSchema,
   imageMetaSchema,
-  studyEntriesSchema,
   tradeSchema,
 } from "@/lib/validation/trade";
-import { getTradingSession, localTradeTimeToUtc } from "@/lib/trading/sessions";
 export type TradeActionState =
   { error?: string; fieldErrors?: Record<string, string[]> } | undefined;
 const FILE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -54,18 +52,6 @@ export async function saveTrade(
       error: "Trades cannot be recorded for a future date.",
       fieldErrors: { tradeDate: ["Choose today or an earlier date."] },
     };
-  if (input.setupId) {
-    const { data: setup, error } = await supabase
-      .from("setups")
-      .select("id, archived_at")
-      .eq("id", input.setupId)
-      .maybeSingle();
-    if (error || !setup) return { error: "This setup is not available." };
-    const isCurrentSetup =
-      String(formData.get("originalSetupId") || "") === input.setupId;
-    if (setup.archived_at && !isCurrentSetup)
-      return { error: "Archived setups cannot be assigned to new trades." };
-  }
   if (
     [...files, ...existingFiles].some(
       (file) => !FILE_TYPES.has(file.type) || file.size > MAX_FILE_SIZE,
@@ -113,141 +99,114 @@ export async function saveTrade(
   if (!existingMetaResult.success)
     return { error: "Existing chart crop metadata is invalid." };
   const existingIds = new Set(existingMetaResult.data.map((meta) => meta.id));
-  if (existingFiles.some((file) => !existingIds.has(file.name.replace(/\.webp$/i, ""))))
+  if (
+    existingFiles.some(
+      (file) => !existingIds.has(file.name.replace(/\.webp$/i, "")),
+    )
+  )
     return { error: "Existing chart replacement metadata is invalid." };
-  let studyEntries: unknown = [];
-  try {
-    studyEntries = JSON.parse(String(formData.get("studyEntries") || "[]"));
-  } catch {
-    return { error: "Study entries are invalid." };
-  }
-  const studyEntriesResult = studyEntriesSchema.safeParse(studyEntries);
-  if (!studyEntriesResult.success)
-    return { error: "Please complete every Study entry." };
-  studyEntriesResult.data.forEach((entry) => {
-    entry.result =
-      entry.realizedR > 0 ? "win" : entry.realizedR < 0 ? "loss" : "be";
-  });
-  if (input.journalMode === "study") {
-    const { error } = await supabase
-      .from("study_entries")
-      .select("id")
-      .limit(1);
-    if (error)
-      return {
-        error:
-          "Database migration 202608090005_study_entries.sql has not been applied to Supabase.",
-      };
-  }
-  const hasEntryTime = Boolean(input.entryTime);
-  const isStudy = input.journalMode === "study";
-  const entryInstant =
-    !isStudy && hasEntryTime
-      ? localTradeTimeToUtc(input.tradeDate, input.entryTime!, input.timezone)
-      : null;
   const derivedResult =
-    input.realizedR == null
-      ? null
-      : input.realizedR > 0
-        ? "win"
-        : input.realizedR < 0
-          ? "loss"
-          : "be";
+    input.realizedR > 0 ? "win" : input.realizedR < 0 ? "loss" : "be";
   const payload = {
     id: tradeId,
     user_id: user.id,
     instrument_id: input.instrumentId,
-    setup_id: input.setupId,
+    setup_id: null,
     trade_date: input.tradeDate,
-    entry_at: entryInstant?.toISOString() ?? null,
-    direction: isStudy ? null : input.direction,
-    planned_rr: isStudy ? null : input.plannedRr,
-    result: isStudy || input.tradeStatus === "missed" ? null : derivedResult,
-    realized_r: isStudy ? null : input.tradeStatus === "missed" ? 0 : input.realizedR,
-    setup_validity: isStudy ? null : input.setupValidity,
-    execution_quality: isStudy ? null : input.executionQuality,
-    trade_status: isStudy ? null : input.tradeStatus,
-    theoretical_r: isStudy ? null : input.theoreticalR,
-    execution_error: isStudy ? null : input.executionError,
+    entry_at: null,
+    direction: input.direction,
+    planned_rr: null,
+    result: derivedResult,
+    realized_r: input.realizedR,
+    setup_validity: input.setupValidity,
+    execution_quality: input.executionQuality,
+    trade_status: input.tradeStatus,
+    theoretical_r: null,
+    execution_error: input.executionError,
     journal_mode: input.journalMode,
-    setup_found: isStudy ? studyEntriesResult.data.length > 0 : true,
-    session: entryInstant
-      ? getTradingSession(input.instrumentSymbol, entryInstant)
-      : "other",
-    session_override: false,
+    setup_found: true,
+    session: input.session,
+    session_override: true,
     notes: input.notes || null,
     visibility: "private" as const,
   };
-  const studyRows =
-    input.journalMode === "study"
-      ? studyEntriesResult.data.map((entry, position) => ({
-          trade_id: tradeId,
-          position,
-          entry_at: localTradeTimeToUtc(
-            input.tradeDate,
-            entry.time,
-            input.timezone,
-          ).toISOString(),
-          session: entry.session,
-          session_override: entry.sessionOverride,
-          direction: entry.direction,
-          planned_rr: entry.plannedRr,
-          result: entry.result,
-          realized_r: entry.realizedR,
-        }))
-      : [];
   const uploaded: string[] = [];
   const imageRows: Record<string, unknown>[] = [];
   try {
     if (existingFiles.length) {
-      const replacementIds = existingFiles.map((file) => file.name.replace(/\.webp$/i, ""));
+      const replacementIds = existingFiles.map((file) =>
+        file.name.replace(/\.webp$/i, ""),
+      );
       const { data: existingRows, error: existingRowsError } = await supabase
         .from("trade_images")
         .select("id, storage_path")
         .eq("trade_id", tradeId)
         .in("id", replacementIds);
       if (existingRowsError || existingRows?.length !== existingFiles.length)
-        throw existingRowsError ?? new Error("One or more existing charts are unavailable.");
+        throw (
+          existingRowsError ??
+          new Error("One or more existing charts are unavailable.")
+        );
       const rowsById = new Map(existingRows.map((row) => [row.id, row]));
       for (const file of existingFiles) {
         const row = rowsById.get(file.name.replace(/\.webp$/i, ""));
         if (!row) throw new Error("Existing chart replacement is incomplete.");
         const { error } = await supabase.storage
           .from("trade-charts")
-          .upload(row.storage_path, file, { cacheControl: "0", contentType: file.type, upsert: true });
+          .upload(row.storage_path, file, {
+            cacheControl: "0",
+            contentType: file.type,
+            upsert: true,
+          });
         if (error) throw error;
       }
     }
-    const uploadResults = await Promise.all(files.map(async (file, i) => {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-      const path = `${user.id}/${tradeId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("trade-charts")
-        .upload(path, file, { cacheControl: "31536000", contentType: file.type, upsert: false });
-      if (error) return { error, path, row: null };
-      const meta = metaResult.data[i];
-      return { error: null, path, row: {
-        trade_id: tradeId,
-        storage_path: path,
-        image_type: meta.imageType,
-        timeframe: meta.timeframe,
-        instrument_symbol: meta.instrumentSymbol,
-        capture_preset: meta.capturePreset,
-        is_composed: meta.isComposed,
-        position: i + existingImageCount,
-        crop_x: meta.cropX,
-        crop_y: meta.cropY,
-        crop_width: meta.cropWidth,
-        crop_height: meta.cropHeight,
-        crop_zoom: meta.cropZoom,
-        crop_rotation: meta.cropRotation,
-        aspect_ratio: meta.aspectRatio,
-      } };
-    }));
-    uploaded.push(...uploadResults.filter((result) => !result.error).map((result) => result.path));
+    const uploadResults = await Promise.all(
+      files.map(async (file, i) => {
+        const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+        const path = `${user.id}/${tradeId}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from("trade-charts")
+          .upload(path, file, {
+            cacheControl: "31536000",
+            contentType: file.type,
+            upsert: false,
+          });
+        if (error) return { error, path, row: null };
+        const meta = metaResult.data[i];
+        return {
+          error: null,
+          path,
+          row: {
+            trade_id: tradeId,
+            storage_path: path,
+            image_type: meta.imageType,
+            timeframe: meta.timeframe,
+            instrument_symbol: meta.instrumentSymbol,
+            capture_preset: meta.capturePreset,
+            is_composed: meta.isComposed,
+            position: i + existingImageCount,
+            crop_x: meta.cropX,
+            crop_y: meta.cropY,
+            crop_width: meta.cropWidth,
+            crop_height: meta.cropHeight,
+            crop_zoom: meta.cropZoom,
+            crop_rotation: meta.cropRotation,
+            aspect_ratio: meta.aspectRatio,
+          },
+        };
+      }),
+    );
+    uploaded.push(
+      ...uploadResults
+        .filter((result) => !result.error)
+        .map((result) => result.path),
+    );
     const failedUpload = uploadResults.find((result) => result.error);
     if (failedUpload?.error) throw failedUpload.error;
-    imageRows.push(...uploadResults.flatMap((result) => result.row ? [result.row] : []));
+    imageRows.push(
+      ...uploadResults.flatMap((result) => (result.row ? [result.row] : [])),
+    );
   } catch (error) {
     if (uploaded.length)
       await supabase.storage.from("trade-charts").remove(uploaded);
@@ -270,7 +229,7 @@ export async function saveTrade(
   }));
   const { error: saveError } = await supabase.rpc("save_trade_bundle", {
     p_trade: payload,
-    p_study_entries: studyRows,
+    p_study_entries: [],
     p_images: imageRows,
     p_existing_images: existingRows,
   });
@@ -282,7 +241,7 @@ export async function saveTrade(
       saveError.message.includes("schema cache");
     return {
       error: migrationMissing
-        ? "Database migration 202608100004_save_trade_bundle.sql has not been applied to Supabase."
+        ? "Database migration 202611210001_simplify_trade_occurrences.sql has not been applied to Supabase."
         : saveError.message,
     };
   }

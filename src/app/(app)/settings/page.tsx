@@ -4,10 +4,9 @@ import {
   PreferencesForm,
   ThemePreferences,
 } from "@/components/settings/preferences-form";
-import { SetupSettings } from "@/components/settings/setup-settings";
 import { StorageUsage } from "@/components/settings/storage-usage";
 import { Panel } from "@/components/ui/panel";
-import { getJournalPreferences, getSetups } from "@/lib/supabase/queries";
+import { getJournalPreferences } from "@/lib/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
 
 const DEFAULT_STORAGE_QUOTA_BYTES = 1_000_000_000;
@@ -20,7 +19,6 @@ export default async function SettingsPage() {
     },
     { data: profile },
     preferences,
-    setups,
     usageResult,
     imageCountResult,
     tradeCountResult,
@@ -28,7 +26,6 @@ export default async function SettingsPage() {
     supabase.auth.getUser(),
     supabase.from("profiles").select("display_name").maybeSingle(),
     getJournalPreferences(),
-    getSetups(true),
     supabase.rpc("get_trade_chart_storage_usage"),
     supabase.from("trade_images").select("id", { count: "exact", head: true }),
     supabase.from("trades").select("id", { count: "exact", head: true }),
@@ -72,16 +69,14 @@ export default async function SettingsPage() {
           />
           <ThemePreferences embedded />
         </Panel>
-        <SetupSettings
-          setups={setups}
-          defaultSetupId={preferences.defaultSetupId}
-        />
-        <StorageUsage
-          usedBytes={usedBytes}
-          quotaBytes={quotaBytes}
-          imageCount={imageCountResult.count ?? 0}
-          tradeCount={tradeCountResult.count ?? 0}
-        />
+        <div className="xl:col-span-2">
+          <StorageUsage
+            usedBytes={usedBytes}
+            quotaBytes={quotaBytes}
+            imageCount={imageCountResult.count ?? 0}
+            tradeCount={tradeCountResult.count ?? 0}
+          />
+        </div>
       </div>
     </>
   );

@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { Metrics } from "@/components/trades/metrics";
 import { TradeList } from "@/components/trades/trade-list";
 import { JOURNAL_MODES } from "@/lib/trading/config";
-import { expandStudyEntries } from "@/lib/trading/study";
 import { calculateMetrics } from "@/lib/trading/metrics";
 import { cn } from "@/lib/utils";
 import type { JournalMode, Trade } from "@/types/database";
@@ -40,8 +38,7 @@ export function ModeComparisonColumn({
 }) {
   const config = JOURNAL_MODES[mode];
   const modeTrades = trades.filter((trade) => trade.journal_mode === mode);
-  const performanceTrades =
-    mode === "study" ? expandStudyEntries(modeTrades) : modeTrades;
+  const metrics = calculateMetrics(modeTrades);
   function href(candidate: ComparisonMode) {
     const nextOther = candidate === otherMode ? mode : otherMode;
     const left = side === "left" ? candidate : nextOther;
@@ -83,16 +80,31 @@ export function ModeComparisonColumn({
           ))}
         </nav>
       </div>
-      <Metrics
-        metrics={calculateMetrics(performanceTrades)}
-        rLabel={mode === "study" ? "Potential R" : "Total R"}
-      />
+      <div className="mb-5 grid grid-cols-3 divide-x divide-border rounded-lg border border-border bg-surface/40">
+        <div className="p-3">
+          <span className="text-xs text-muted">R</span>
+          <strong className="mt-1 block font-mono">
+            {metrics.totalR > 0 ? "+" : ""}
+            {metrics.totalR.toFixed(1)}R
+          </strong>
+        </div>
+        <div className="p-3">
+          <span className="text-xs text-muted">Trades</span>
+          <strong className="mt-1 block font-mono">{metrics.total}</strong>
+        </div>
+        <div className="p-3">
+          <span className="text-xs text-muted">Win rate</span>
+          <strong className="mt-1 block font-mono">
+            {metrics.winRate.toFixed(0)}%
+          </strong>
+        </div>
+      </div>
       <div className="mt-5">
         <h3 className="mb-3 text-sm font-medium">
           {config.label} entries{" "}
-          <span className="text-muted">({performanceTrades.length})</span>
+          <span className="text-muted">({modeTrades.length})</span>
         </h3>
-        <TradeList trades={performanceTrades} timezone={timezone} />
+        <TradeList trades={modeTrades} timezone={timezone} />
       </div>
     </section>
   );

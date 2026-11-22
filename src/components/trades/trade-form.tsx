@@ -1,35 +1,32 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { ClipboardPaste, ImagePlus, SlidersHorizontal, X } from "lucide-react";
 import { saveTrade } from "@/app/actions/trades";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { JournalModeSelector } from "./journal-mode";
-import { StudyEntriesEditor } from "./study-entries-editor";
-import {
-  IMAGE_TYPES,
-  RR_PRESETS,
-  SESSION_LABELS,
-  TIMEFRAMES,
-} from "@/lib/trading/config";
-import { getTradingSession, localTradeTimeToUtc } from "@/lib/trading/sessions";
+import { IMAGE_TYPES, SESSION_LABELS, TIMEFRAMES } from "@/lib/trading/config";
 import { cn } from "@/lib/utils";
 import {
   extractCapturedChart,
   optimizeTradeChart,
 } from "@/lib/images/optimize-trade-chart";
-import { readTradingJournalMetadata, type TradingJournalImageMetadata } from "@/lib/images/trading-journal-metadata";
-import { composeTradeChart, overwriteTradeChartDate } from "@/lib/images/compose-trade-chart";
+import {
+  readTradingJournalMetadata,
+  type TradingJournalImageMetadata,
+} from "@/lib/images/trading-journal-metadata";
+import {
+  composeTradeChart,
+  overwriteTradeChartDate,
+} from "@/lib/images/compose-trade-chart";
 import type {
   Direction,
   ExecutionError,
   ExecutionQuality,
   Instrument,
   JournalMode,
-  Setup,
   Trade,
-  TradeResult,
   TradeStatus,
   SetupValidity,
 } from "@/types/database";
@@ -68,10 +65,6 @@ type ExistingCrop = CropState & {
 const MAX_CHARTS = 6;
 const MAX_CHART_SIZE = 10 * 1024 * 1024;
 const CHART_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
-const SETUP_OPTIONS: readonly (readonly [boolean, string])[] = [
-  [true, "Setup found"],
-  [false, "No valid setup"],
-];
 const EXECUTION_ERRORS: readonly [ExecutionError, string][] = [
   ["hesitation", "Hesitation"],
   ["chase", "Chase"],
@@ -85,10 +78,16 @@ const TRADING_EXTENSION_ID =
   process.env.NEXT_PUBLIC_TRADING_EXTENSION_ID ??
   "khadmipclapgpdhbaaaehgolcoabopji";
 type ExtensionSessionResponse = {
+  schemaVersion?: number;
   error?: string;
   expectedCount?: number;
   tradeDate?: string;
-  screenshots?: ({ name: string; type: string; dataUrl: string } & Partial<Pick<TradingJournalImageMetadata, "symbol" | "timeframe" | "preset" | "capturedAt">>)[];
+  screenshots?: ({ name: string; type: string; dataUrl: string } & Partial<
+    Pick<
+      TradingJournalImageMetadata,
+      "symbol" | "timeframe" | "preset" | "capturedAt"
+    >
+  >)[];
 };
 
 function requestCopiedSession() {
@@ -146,7 +145,9 @@ function ChoiceField({
 }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-[13px] font-medium text-foreground">{label}</legend>
+      <legend className="mb-2 text-[13px] font-medium text-foreground">
+        {label}
+      </legend>
       <div className="grid grid-cols-2 gap-2">
         {options.map(([option, text]) => (
           <button
@@ -171,14 +172,10 @@ function ChoiceField({
 
 export function TradeForm({
   instruments,
-  setups,
-  defaultSetupId,
   timezone,
   trade,
 }: {
   instruments: Instrument[];
-  setups: Setup[];
-  defaultSetupId: string | null;
   timezone: string;
   trade?: Trade;
 }) {
@@ -200,60 +197,29 @@ export function TradeForm({
       .map((part) => [part.type, part.value]),
   );
   const [mode, setMode] = useState<JournalMode>(trade?.journal_mode ?? "live");
-  const [setupId, setSetupId] = useState(
-    trade?.setup_id ?? defaultSetupId ?? "",
-  );
-  const [setupFound, setSetupFound] = useState(trade?.setup_found ?? true);
   const [instrument, setInstrument] = useState(
     trade?.instrument.symbol ?? instruments[0]?.symbol ?? "NQ",
   );
   const [date, setDate] = useState(
     trade?.trade_date ?? `${zonedNow.year}-${zonedNow.month}-${zonedNow.day}`,
   );
-  const [time, setTime] = useState(
-    trade?.entry_at
-      ? new Intl.DateTimeFormat("en-GB", {
-          timeZone: timezone,
-          hour: "2-digit",
-          minute: "2-digit",
-          hourCycle: "h23",
-        }).format(new Date(trade.entry_at))
-      : mode === "study"
-        ? ""
-        : `${zonedNow.hour}:${zonedNow.minute}`,
-  );
-  const [direction, setDirection] = useState<Direction | null>(
+  const [direction, setDirection] = useState<Direction>(
     trade?.direction ?? "long",
   );
-  const [rr, setRr] = useState<number | null>(trade?.planned_rr ?? 2);
-  const [result, setResult] = useState<TradeResult | null>(
-    trade?.result ?? "win",
+  const [realized, setRealized] = useState<number>(trade?.realized_r ?? 2);
+  const [setupValidity, setSetupValidity] = useState<SetupValidity>(
+    trade?.setup_validity ?? "valid",
   );
-  const [realized, setRealized] = useState<number | null>(
-    trade?.realized_r ?? 2,
+  const [executionQuality, setExecutionQuality] = useState<ExecutionQuality>(
+    trade?.execution_quality ?? "good",
   );
-  const [setupValidity, setSetupValidity] = useState<SetupValidity>(trade?.setup_validity ?? "valid");
-  const [executionQuality, setExecutionQuality] = useState<ExecutionQuality>(trade?.execution_quality ?? "good");
-  const [tradeStatus, setTradeStatus] = useState<TradeStatus>(trade?.trade_status ?? "taken");
-  const [theoreticalR, setTheoreticalR] = useState<number | null>(trade?.theoretical_r ?? null);
-  const [executionError, setExecutionError] = useState<ExecutionError | null>(trade?.execution_error ?? null);
-  const [sessionOverride, setSessionOverride] = useState(
-    trade?.session_override ?? false,
+  const [tradeStatus, setTradeStatus] = useState<TradeStatus>(
+    trade?.trade_status ?? "taken",
   );
-  const detectedSession = useMemo(
-    () =>
-      time
-        ? getTradingSession(
-            instrument,
-            localTradeTimeToUtc(date, time, timezone),
-          )
-        : "other",
-    [instrument, date, time, timezone],
+  const [executionError, setExecutionError] = useState<ExecutionError | null>(
+    trade?.execution_error ?? null,
   );
-  const [manualSession, setManualSession] = useState(
-    trade?.session ?? detectedSession,
-  );
-  const session = sessionOverride ? manualSession : detectedSession;
+  const [session, setSession] = useState(trade?.session ?? "new_york_am");
   const [charts, setChartsState] = useState<Chart[]>([]);
   const [optimizing, setOptimizing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -286,7 +252,6 @@ export function TradeForm({
   } | null>(null);
   const objectUrls = useRef(new Set<string>());
   const isStudy = mode === "study";
-  const showExecution = !isStudy;
   const selectedInstrument = instruments.find(
     (item) => item.symbol === instrument,
   );
@@ -302,10 +267,13 @@ export function TradeForm({
     objectUrls.current.delete(url);
   }
 
-  useEffect(() => () => {
-    objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
-    objectUrls.current.clear();
-  }, []);
+  useEffect(
+    () => () => {
+      objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls.current.clear();
+    },
+    [],
+  );
 
   function setCharts(next: Chart[]) {
     setChartsState(next);
@@ -324,19 +292,33 @@ export function TradeForm({
       existingFilesInput.current.files = transfer.files;
   }
 
-  async function rewriteExistingChartDate(chart: ExistingCrop, tradeDate: string) {
+  async function rewriteExistingChartDate(
+    chart: ExistingCrop,
+    tradeDate: string,
+  ) {
     const response = await fetch(chart.url);
     if (!response.ok) throw new Error("Existing chart could not be loaded");
-    const source = new File([await response.blob()], `${chart.id}.webp`, { type: "image/webp" });
-    const rewritten = await overwriteTradeChartDate(source, chart.capturePreset, tradeDate);
-    return new File([rewritten], `${chart.id}.webp`, { type: "image/webp", lastModified: rewritten.lastModified });
+    const source = new File([await response.blob()], `${chart.id}.webp`, {
+      type: "image/webp",
+    });
+    const rewritten = await overwriteTradeChartDate(
+      source,
+      chart.capturePreset,
+      tradeDate,
+    );
+    return new File([rewritten], `${chart.id}.webp`, {
+      type: "image/webp",
+      lastModified: rewritten.lastModified,
+    });
   }
 
   async function loadExistingSource(chart: ExistingCrop) {
     if (chart.sourceFile) return chart.sourceFile;
     const response = await fetch(chart.url);
     if (!response.ok) throw new Error("Existing chart could not be loaded");
-    const captured = new File([await response.blob()], `${chart.id}.webp`, { type: "image/webp" });
+    const captured = new File([await response.blob()], `${chart.id}.webp`, {
+      type: "image/webp",
+    });
     return extractCapturedChart(captured, chart.capturePreset);
   }
 
@@ -346,30 +328,51 @@ export function TradeForm({
     void Promise.resolve()
       .then(() => {
         if (!cancelled) setOptimizing(true);
-        return Promise.all(existingCrops.map(async (chart) => ({
-          replacementFile: await rewriteExistingChartDate(chart, trade.trade_date),
-          sourceFile: await loadExistingSource(chart),
-        })));
+        return Promise.all(
+          existingCrops.map(async (chart) => ({
+            replacementFile: await rewriteExistingChartDate(
+              chart,
+              trade.trade_date,
+            ),
+            sourceFile: await loadExistingSource(chart),
+          })),
+        );
       })
       .then((prepared) => {
         if (cancelled) return;
-        setExistingCharts(existingCrops.map((chart, index) => {
-          const { replacementFile, sourceFile } = prepared[index];
-          return { ...chart, replacementFile, sourceFile, url: createChartUrl(replacementFile), sourceUrl: createChartUrl(sourceFile) };
-        }));
+        setExistingCharts(
+          existingCrops.map((chart, index) => {
+            const { replacementFile, sourceFile } = prepared[index];
+            return {
+              ...chart,
+              replacementFile,
+              sourceFile,
+              url: createChartUrl(replacementFile),
+              sourceUrl: createChartUrl(sourceFile),
+            };
+          }),
+        );
       })
       .catch(() => {
-        if (!cancelled) setUploadError("The existing chart dates could not be prepared for editing.");
+        if (!cancelled)
+          setUploadError(
+            "The existing chart dates could not be prepared for editing.",
+          );
       })
       .finally(() => {
         if (!cancelled) setOptimizing(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // Existing charts only need normalization once when the edit form opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trade?.id]);
 
-  async function addFiles(files: FileList | null, suppliedMetadata?: (TradingJournalImageMetadata | null)[]) {
+  async function addFiles(
+    files: FileList | null,
+    suppliedMetadata?: (TradingJournalImageMetadata | null)[],
+  ) {
     if (!files || optimizing) return;
     const available = Math.max(
       0,
@@ -399,7 +402,9 @@ export function TradeForm({
     setUploadError(null);
     if (fileInput.current) fileInput.current.value = "";
     try {
-      const metadata = suppliedMetadata ?? await Promise.all(selected.map(readTradingJournalMetadata));
+      const metadata =
+        suppliedMetadata ??
+        (await Promise.all(selected.map(readTradingJournalMetadata)));
       const firstDetected = metadata.find((value) => value);
       if (firstDetected && charts.length === 0 && existingCrops.length === 0)
         setInstrument(firstDetected.symbol);
@@ -451,7 +456,9 @@ export function TradeForm({
       if (!response.screenshots?.length)
         throw new Error("The copied session contains no screens.");
       if (response.expectedCount !== response.screenshots.length)
-        throw new Error(`Session transfer incomplete: received ${response.screenshots.length} of ${response.expectedCount ?? "?"} screens.`);
+        throw new Error(
+          `Session transfer incomplete: received ${response.screenshots.length} of ${response.expectedCount ?? "?"} screens.`,
+        );
       if (response.tradeDate) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(response.tradeDate))
           throw new Error("The copied session contains an invalid trade date.");
@@ -467,8 +474,18 @@ export function TradeForm({
           }),
         );
         metadata.push(
-          screenshot.symbol && screenshot.timeframe && screenshot.preset && screenshot.capturedAt
-            ? { signature: "trading-journal-capture", version: 1, symbol: screenshot.symbol, timeframe: screenshot.timeframe, preset: screenshot.preset, capturedAt: screenshot.capturedAt }
+          screenshot.symbol &&
+            screenshot.timeframe &&
+            screenshot.preset &&
+            screenshot.capturedAt
+            ? {
+                signature: "trading-journal-capture",
+                version: 1,
+                symbol: screenshot.symbol,
+                timeframe: screenshot.timeframe,
+                preset: screenshot.preset,
+                capturedAt: screenshot.capturedAt,
+              }
             : null,
         );
       }
@@ -511,10 +528,16 @@ export function TradeForm({
         return { ...chart, file, url: createChartUrl(file) };
       });
       setCharts(next);
-      setExistingCharts(existingCrops.map((chart, index) => {
-        revokeChartUrl(chart.url);
-        return { ...chart, replacementFile: rewrittenExisting[index], url: createChartUrl(rewrittenExisting[index]) };
-      }));
+      setExistingCharts(
+        existingCrops.map((chart, index) => {
+          revokeChartUrl(chart.url);
+          return {
+            ...chart,
+            replacementFile: rewrittenExisting[index],
+            url: createChartUrl(rewrittenExisting[index]),
+          };
+        }),
+      );
     } catch {
       setUploadError("The chart dates could not be updated. Please try again.");
     } finally {
@@ -524,21 +547,6 @@ export function TradeForm({
 
   function changeMode(nextMode: JournalMode) {
     setMode(nextMode);
-    if (nextMode !== "study") {
-      setSetupFound(true);
-      if (!time) setTime(`${zonedNow.hour}:${zonedNow.minute}`);
-      if (!direction) setDirection("long");
-      if (rr == null) setRr(2);
-      if (!result) setResult("win");
-      if (realized == null) setRealized(2);
-    }
-  }
-
-  function changeResult(nextResult: TradeResult) {
-    setResult(nextResult);
-    setRealized(
-      nextResult === "win" ? (rr ?? 0) : nextResult === "loss" ? -1 : 0,
-    );
   }
   function changeExecutionQuality(next: ExecutionQuality) {
     setExecutionQuality(next);
@@ -548,11 +556,6 @@ export function TradeForm({
     setTradeStatus(next);
     if (next === "missed") {
       setExecutionQuality("bad");
-      setResult(null);
-      setRealized(0);
-    } else if (result == null) {
-      setResult("win");
-      setRealized(rr ?? 2);
     }
   }
   function changeSetupValidity(next: SetupValidity) {
@@ -562,17 +565,6 @@ export function TradeForm({
       if (tradeStatus === "missed") changeStatus("taken");
     }
   }
-  function chooseSetup(found: boolean) {
-    setSetupFound(found);
-    if (!found) {
-      setDirection(null);
-      setRr(null);
-      setResult(null);
-      setRealized(null);
-      setTime("");
-    }
-  }
-
   const cropItem =
     cropTarget?.kind === "new"
       ? charts[cropTarget.index]
@@ -586,7 +578,9 @@ export function TradeForm({
       : cropTarget
         ? existingCrops[cropTarget.index]
           ? {
-              src: existingCrops[cropTarget.index].sourceUrl ?? existingCrops[cropTarget.index].url,
+              src:
+                existingCrops[cropTarget.index].sourceUrl ??
+                existingCrops[cropTarget.index].url,
               crop: existingCrops[cropTarget.index],
               preset: existingCrops[cropTarget.index].capturePreset,
               allowTrim: true,
@@ -615,8 +609,8 @@ export function TradeForm({
                 ...item,
                 file,
                 url: createChartUrl(file),
-              instrumentSymbol: instrument,
-              isComposed: true,
+                instrumentSymbol: instrument,
+                isComposed: true,
                 crop: DEFAULT_CROP,
                 cropApplied: true,
               }
@@ -648,16 +642,29 @@ export function TradeForm({
           target.timeframe,
           date,
         );
-        const replacementFile = new File([composed], `${target.id}.webp`, { type: "image/webp", lastModified: composed.lastModified });
+        const replacementFile = new File([composed], `${target.id}.webp`, {
+          type: "image/webp",
+          lastModified: composed.lastModified,
+        });
         revokeChartUrl(target.url);
-        setExistingCharts(existingCrops.map((item, index) =>
-          index === cropTarget.index
-            ? { ...item, replacementFile, sourceFile, url: createChartUrl(replacementFile), ...DEFAULT_CROP }
-            : item,
-        ));
+        setExistingCharts(
+          existingCrops.map((item, index) =>
+            index === cropTarget.index
+              ? {
+                  ...item,
+                  replacementFile,
+                  sourceFile,
+                  url: createChartUrl(replacementFile),
+                  ...DEFAULT_CROP,
+                }
+              : item,
+          ),
+        );
         setCropTarget(null);
       } catch {
-        setUploadError("This existing chart could not be recomposed. Please try again.");
+        setUploadError(
+          "This existing chart could not be recomposed. Please try again.",
+        );
       } finally {
         setOptimizing(false);
       }
@@ -666,26 +673,6 @@ export function TradeForm({
 
   return (
     <>
-      <div className="mb-5 grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,.85fr)]">
-        <div className="setup-field rounded-lg border border-border bg-surface p-5 xl:col-start-2">
-          <Field label="SETUP">
-            <Select
-              form="trade-form"
-              name="setupId"
-              value={setupId}
-              onChange={(event) => setSetupId(event.target.value)}
-            >
-              <option value="">No model</option>
-              {setups.map((setup) => (
-                <option key={setup.id} value={setup.id}>
-                  {setup.name}
-                  {setup.archived_at ? " (archived)" : ""}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-      </div>
       <form
         id="trade-form"
         data-mode={mode}
@@ -697,35 +684,17 @@ export function TradeForm({
             setUploadError("Frame every manual chart before saving the trade.");
           }
         }}
-        onChange={(event) => {
-          const target = event.target;
-          if (
-            target instanceof HTMLInputElement &&
-            target.name === "realizedR"
-          ) {
-            const value = target.value === "" ? null : Number(target.value);
-            setResult(
-              value == null
-                ? null
-                : value > 0
-                  ? "win"
-                  : value < 0
-                    ? "loss"
-                    : "be",
-            );
-          }
-        }}
         className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,.85fr)]"
       >
         <input type="hidden" name="tradeId" value={trade?.id ?? ""} />
         <input
-          type="hidden"
-          name="originalSetupId"
-          value={trade?.setup_id ?? ""}
+          ref={existingFilesInput}
+          type="file"
+          name="existingCharts"
+          multiple
+          hidden
         />
-        <input ref={existingFilesInput} type="file" name="existingCharts" multiple hidden />
         <input type="hidden" name="journalMode" value={mode} />
-        <input type="hidden" name="setupFound" value={String(setupFound)} />
         <input
           type="hidden"
           name="instrumentId"
@@ -733,15 +702,14 @@ export function TradeForm({
         />
         <input type="hidden" name="instrumentSymbol" value={instrument} />
         <input type="hidden" name="timezone" value={timezone} />
-        <input type="hidden" name="direction" value={direction ?? ""} />
-        <input type="hidden" name="setupValidity" value={isStudy ? "" : setupValidity} />
-        <input type="hidden" name="executionQuality" value={isStudy ? "" : executionQuality} />
-        <input type="hidden" name="tradeStatus" value={isStudy ? "" : tradeStatus} />
-        <input type="hidden" name="executionError" value={isStudy ? "" : executionError ?? ""} />
+        <input type="hidden" name="direction" value={direction} />
+        <input type="hidden" name="setupValidity" value={setupValidity} />
+        <input type="hidden" name="executionQuality" value={executionQuality} />
+        <input type="hidden" name="tradeStatus" value={tradeStatus} />
         <input
           type="hidden"
-          name="sessionOverride"
-          value={String(sessionOverride)}
+          name="executionError"
+          value={executionError ?? ""}
         />
         <input
           type="hidden"
@@ -982,57 +950,75 @@ export function TradeForm({
         </section>
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-5 sm:p-6">
           <JournalModeSelector value={mode} onChange={changeMode} />
-          {isStudy ? (
-            <div className="mt-6">
-              <span className="mb-2 block text-sm font-medium text-zinc-300">
-                Study outcome
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                {SETUP_OPTIONS.map(([found, label]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => chooseSetup(found)}
-                    className={cn(
-                      "h-10 rounded-md border text-sm",
-                      setupFound === found
-                        ? "border-purple-800 bg-purple-950/30 text-purple-300"
-                        : "border-zinc-800 text-zinc-600",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+          <section className="mt-6 rounded-lg border border-border bg-surface/55 p-4">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wider">
+                Review
+              </h2>
+              <p className="mt-1 text-xs text-muted">
+                Classify the opportunity and the quality of your execution.
+              </p>
             </div>
-          ) : null}
-          {!isStudy ? (
-            <section className="mt-6 rounded-lg border border-border bg-surface/55 p-4">
-              <div className="mb-4">
-                <h2 className="text-sm font-semibold uppercase tracking-wider">Review</h2>
-                <p className="mt-1 text-xs text-muted">Separate the quality of the model from the quality of its execution.</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <ChoiceField
+                label="Validity"
+                value={setupValidity}
+                options={[
+                  ["valid", "Valid"],
+                  ["invalid", "Invalid"],
+                ]}
+                onChange={(value) =>
+                  changeSetupValidity(value as SetupValidity)
+                }
+              />
+              <ChoiceField
+                label="Execution"
+                value={executionQuality}
+                options={[
+                  ["good", "Good"],
+                  ["bad", "Bad"],
+                ]}
+                onChange={(value) =>
+                  changeExecutionQuality(value as ExecutionQuality)
+                }
+              />
+              <ChoiceField
+                label="Status"
+                value={tradeStatus}
+                options={[
+                  ["taken", "Taken"],
+                  ["missed", "Missed"],
+                ]}
+                onChange={(value) => changeStatus(value as TradeStatus)}
+              />
+            </div>
+            {executionQuality === "bad" ? (
+              <div className="mt-4">
+                <Field label="Primary execution error" hint="Required">
+                  <Select
+                    value={executionError ?? ""}
+                    onChange={(event) =>
+                      setExecutionError(event.target.value as ExecutionError)
+                    }
+                    required
+                  >
+                    <option value="" disabled>
+                      Choose a reason
+                    </option>
+                    {EXECUTION_ERRORS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <ChoiceField label="Setup" value={setupValidity} options={[["valid", "Valid"], ["invalid", "Invalid"]]} onChange={(value) => changeSetupValidity(value as SetupValidity)} />
-                <ChoiceField label="Execution" value={executionQuality} options={[["good", "Good"], ["bad", "Bad"]]} onChange={(value) => changeExecutionQuality(value as ExecutionQuality)} />
-                <ChoiceField label="Status" value={tradeStatus} options={[["taken", "Taken"], ["missed", "Missed"]]} onChange={(value) => changeStatus(value as TradeStatus)} />
-              </div>
-              {executionQuality === "bad" ? (
-                <div className="mt-4">
-                  <Field label="Primary execution error" hint="Required">
-                    <Select value={executionError ?? ""} onChange={(event) => setExecutionError(event.target.value as ExecutionError)} required>
-                      <option value="" disabled>Choose a reason</option>
-                      {EXECUTION_ERRORS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </Select>
-                  </Field>
-                </div>
-              ) : null}
-            </section>
-          ) : null}
+            ) : null}
+          </section>
           <h2 className="mb-6 mt-7 text-sm font-semibold uppercase tracking-wider">
-            {isStudy ? "Analysis details" : "Trade details"}
+            Occurrence details
           </h2>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-3">
             <Field label="Instrument">
               <Select
                 value={instrument}
@@ -1045,7 +1031,7 @@ export function TradeForm({
                 ))}
               </Select>
             </Field>
-            <Field label={mode === "live" ? "Date" : "Historical market date"}>
+            <Field label="Market date">
               <Input
                 name="tradeDate"
                 type="date"
@@ -1056,33 +1042,13 @@ export function TradeForm({
                 required
               />
             </Field>
-            {showExecution ? (
-              <Field
-                label={isStudy ? "Potential entry time" : "Entry time"}
-                hint={isStudy ? "Optional" : timezone}
-              >
-                <Input
-                  name="entryTime"
-                  type="time"
-                  value={time}
-                  onChange={(event) => setTime(event.target.value)}
-                  required={!isStudy}
-                />
-              </Field>
-            ) : (
-              <input type="hidden" name="entryTime" value="" />
-            )}
-            <Field
-              label="Session"
-              hint={sessionOverride ? "Manual" : "Auto-detected"}
-            >
+            <Field label="Session">
               <Select
                 name="session"
                 value={session}
-                onChange={(event) => {
-                  setManualSession(event.target.value as typeof manualSession);
-                  setSessionOverride(true);
-                }}
+                onChange={(event) =>
+                  setSession(event.target.value as typeof session)
+                }
               >
                 {Object.entries(SESSION_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -1092,125 +1058,49 @@ export function TradeForm({
               </Select>
             </Field>
           </div>
-          {showExecution ? (
-            <>
-              <div className="mt-5">
-                <span className="mb-2 block text-sm font-medium text-zinc-300">
-                  {isStudy ? "Potential direction" : "Direction"}
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["long", "short"] as const).map((value) => (
-                    <button
-                      type="button"
-                      key={value}
-                      onClick={() => setDirection(value)}
-                      className={cn(
-                        "h-10 rounded-md border text-sm font-semibold uppercase",
-                        direction === value
-                          ? value === "long"
-                            ? "border-emerald-700 bg-emerald-950/50 text-emerald-300"
-                            : "border-red-800 bg-red-950/40 text-red-300"
-                          : "border-zinc-800 text-zinc-600",
-                      )}
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <Field label={isStudy ? "Potential RR" : "Risk / Reward"}>
-                  <Select
-                    name="plannedRr"
-                    value={rr ?? ""}
-                    onChange={(event) =>
-                      setRr(
-                        event.target.value ? Number(event.target.value) : null,
-                      )
-                    }
-                    required={!isStudy}
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div>
+              <span className="mb-2 block text-sm font-medium text-zinc-300">
+                Direction
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {(["long", "short"] as const).map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    onClick={() => setDirection(value)}
+                    className={cn(
+                      "h-10 rounded-md border text-sm font-semibold uppercase",
+                      direction === value
+                        ? value === "long"
+                          ? "border-emerald-700 bg-emerald-950/50 text-emerald-300"
+                          : "border-red-800 bg-red-950/40 text-red-300"
+                        : "border-zinc-800 text-zinc-600",
+                    )}
                   >
-                    {isStudy ? <option value="">Not specified</option> : null}
-                    {RR_PRESETS.map((value) => (
-                      <option key={value} value={value}>
-                        1:{value}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                {!isStudy && tradeStatus === "taken" ? (
-                  <>
-                    <Field label="Result">
-                      <Select
-                        name="result"
-                        value={result ?? ""}
-                        onChange={(event) =>
-                          changeResult(event.target.value as TradeResult)
-                        }
-                      >
-                        <option value="win">Win</option>
-                        <option value="loss">Loss</option>
-                        <option value="be">Break even</option>
-                      </Select>
-                    </Field>
-                    <Field label="Realized R" hint="Editable">
-                      <Input
-                        name="realizedR"
-                        type="number"
-                        step="0.1"
-                        value={realized ?? ""}
-                        onChange={(event) =>
-                          setRealized(
-                            event.target.value
-                              ? Number(event.target.value)
-                              : null,
-                          )
-                        }
-                      />
-                    </Field>
-                  </>
-                ) : !isStudy ? (
-                  <>
-                    <Field label="Actual R" hint="Missed setups never affect P&L">
-                      <Input value="0" disabled />
-                    </Field>
-                    <Field label="Theoretical R" hint="Required">
-                      <Input name="theoreticalR" type="number" step="0.1" value={theoreticalR ?? ""} onChange={(event) => setTheoreticalR(event.target.value ? Number(event.target.value) : null)} required />
-                    </Field>
-                    <input type="hidden" name="result" value="" />
-                    <input type="hidden" name="realizedR" value="0" />
-                  </>
-                ) : (
-                  <>
-                    <input type="hidden" name="result" value="" />
-                    <input type="hidden" name="realizedR" value="" />
-                    <input type="hidden" name="theoreticalR" value="" />
-                  </>
-                )}
-                {!isStudy && tradeStatus === "taken" ? (
-                  <Field label="Theoretical R" hint="Optional model outcome">
-                    <Input name="theoreticalR" type="number" step="0.1" value={theoreticalR ?? ""} onChange={(event) => setTheoreticalR(event.target.value ? Number(event.target.value) : null)} />
-                  </Field>
-                ) : null}
+                    {value}
+                  </button>
+                ))}
               </div>
-            </>
-          ) : (
-            <>
-              <input type="hidden" name="plannedRr" value="" />
-              <input type="hidden" name="result" value="" />
-              <input type="hidden" name="realizedR" value="" />
-              <input type="hidden" name="theoreticalR" value="" />
-            </>
-          )}
-          {isStudy ? (
-            <StudyEntriesEditor
-              formId="trade-form"
-              instrument={instrument}
-              date={date}
-              timezone={timezone}
-              initialEntries={trade?.study_entries ?? []}
-            />
-          ) : null}
+            </div>
+            <Field
+              label="Realized R"
+              hint={
+                tradeStatus === "missed"
+                  ? "Informative only — excluded from stats"
+                  : "Result is derived automatically"
+              }
+            >
+              <Input
+                name="realizedR"
+                type="number"
+                step="0.1"
+                value={realized}
+                onChange={(event) => setRealized(Number(event.target.value))}
+                required
+              />
+            </Field>
+          </div>
           <div className="mt-5">
             <Field label="Notes">
               <Textarea

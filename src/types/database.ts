@@ -3,11 +3,25 @@ export type TradeResult = "win" | "loss" | "be" | "open";
 export type SetupValidity = "valid" | "invalid";
 export type ExecutionQuality = "good" | "bad";
 export type TradeStatus = "taken" | "missed";
-export type ExecutionError = "hesitation" | "chase" | "oversize" | "early_entry" | "late_entry" | "extra_trade" | "other";
+export type ExecutionError =
+  | "hesitation"
+  | "chase"
+  | "oversize"
+  | "early_entry"
+  | "late_entry"
+  | "extra_trade"
+  | "other";
 export type JournalMode = "live" | "study" | "practice";
 export type Visibility = "private" | "followers" | "public";
-export type TradingSession = "asia" | "london" | "new_york_am" | "new_york_lunch" | "new_york_pm" | "other";
-export type ImageType = "htf_analysis" | "setup" | "entry" | "management" | "exit" | "other";
+export type TradingSession =
+  | "asia"
+  | "london"
+  | "new_york_am"
+  | "new_york_lunch"
+  | "new_york_pm"
+  | "other";
+export type ImageType =
+  "htf_analysis" | "setup" | "entry" | "management" | "exit" | "other";
 
 export interface Instrument {
   id: string;
@@ -16,15 +30,6 @@ export interface Instrument {
   asset_class: string;
   exchange: string | null;
   market_timezone: string;
-}
-
-export interface Setup {
-  id: string;
-  user_id: string;
-  name: string;
-  archived_at: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface TradeImage {
@@ -67,7 +72,6 @@ export interface Trade {
   id: string;
   user_id: string;
   instrument_id: string;
-  setup_id: string | null;
   trade_date: string;
   entry_at: string | null;
   direction: Direction | null;
@@ -88,7 +92,6 @@ export interface Trade {
   created_at: string;
   updated_at: string;
   instrument: Instrument;
-  setup: Setup | null;
   images: TradeImage[];
   study_entries: StudyEntry[];
 }

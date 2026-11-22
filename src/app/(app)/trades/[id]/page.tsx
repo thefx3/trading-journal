@@ -6,12 +6,14 @@ import { FeedImageGallery } from "@/components/journal/feed-image-gallery";
 import { PageHeader } from "@/components/layout/page-header";
 import { JournalModeBadge } from "@/components/trades/journal-mode";
 import { RValue } from "@/components/trades/result";
-import { EXECUTION_ERROR_LABELS, TradeReviewBadges } from "@/components/trades/trade-review-badges";
+import {
+  EXECUTION_ERROR_LABELS,
+  TradeReviewBadges,
+} from "@/components/trades/trade-review-badges";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { SESSION_LABELS } from "@/lib/trading/config";
-import { getJournalPreferences, getTrade } from "@/lib/supabase/queries";
-import type { StudyEntry } from "@/types/database";
+import { getTrade } from "@/lib/supabase/queries";
 
 function Detail({
   label,
@@ -29,39 +31,6 @@ function Detail({
     </div>
   );
 }
-function timeInZone(value: string, timezone: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: timezone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(value));
-}
-function PotentialEntry({
-  entry,
-  index,
-  timezone,
-}: {
-  entry: StudyEntry;
-  index: number;
-  timezone: string;
-}) {
-  return (
-    <Panel className="p-3">
-      <div className="flex items-center justify-between">
-        <strong className="text-sm">Entry {index + 1}</strong>
-        <RValue value={Number(entry.realized_r)} />
-      </div>
-      <p className="mt-2 text-sm text-secondary">
-        {timeInZone(entry.entry_at, timezone)} · {SESSION_LABELS[entry.session]}
-      </p>
-      <p className="mt-1 text-xs text-muted">
-        {entry.direction.toUpperCase()} · 1:{Number(entry.planned_rr)} ·{" "}
-        {entry.result}
-      </p>
-    </Panel>
-  );
-}
 
 export default async function TradePage({
   params,
@@ -69,24 +38,17 @@ export default async function TradePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [trade, preferences] = await Promise.all([
-    getTrade(id),
-    getJournalPreferences(),
-  ]);
+  const trade = await getTrade(id);
   if (!trade) notFound();
-  const isStudy = trade.journal_mode === "study";
   const titleDate = format(
     new Date(`${trade.trade_date}T12:00:00`),
     "d MMMM yyyy",
   );
-  const entryLabel = trade.entry_at
-    ? timeInZone(trade.entry_at, preferences.timezone)
-    : "Study";
   return (
     <>
       <PageHeader
         title={titleDate}
-        description={`${entryLabel} · ${isStudy ? "Historical study" : SESSION_LABELS[trade.session]}`}
+        description={`${SESSION_LABELS[trade.session]} · ${trade.journal_mode}`}
         backHref="/journal"
       />
       <Panel className="mb-8 flex flex-wrap items-center gap-x-6 gap-y-4 p-5">
@@ -103,47 +65,39 @@ export default async function TradePage({
             {trade.direction.toUpperCase()}
           </span>
         ) : null}
-        <Detail label="Setup">{trade.setup?.name ?? "No model"}</Detail>
-        {isStudy ? (
-          <>
-            <Detail label="Potential entries">
-              {trade.study_entries.length}
-            </Detail>
-            <Detail label="Study result">
-              {trade.setup_found ? "Setup found" : "No valid setup"}
-            </Detail>
-          </>
-        ) : (
-          <>
-            <TradeReviewBadges trade={trade} />
-            <Detail label="Planned RR">1:{Number(trade.planned_rr)}</Detail>
-            <Detail label="Result">
-              <span
-                className={
-                  trade.result === "win"
-                    ? "text-positive"
-                    : trade.result === "loss"
-                      ? "text-negative"
-                      : "text-muted"
-                }
-              >
-                {trade.trade_status === "missed" ? "N/A" : trade.result === "be" ? "BE" : trade.result?.toUpperCase()}
-              </span>
-            </Detail>
-            <Detail label="Realized">
-              {trade.realized_r != null ? (
-                <RValue value={Number(trade.realized_r)} />
-              ) : (
-                "—"
-              )}
-            </Detail>
-            <Detail label="Model R">
-              {trade.theoretical_r != null ? <RValue value={Number(trade.theoretical_r)} /> : "—"}
-            </Detail>
-            {trade.execution_error ? <Detail label="Primary error">{EXECUTION_ERROR_LABELS[trade.execution_error]}</Detail> : null}
-            <Detail label="Session">{SESSION_LABELS[trade.session]}</Detail>
-          </>
-        )}
+        <TradeReviewBadges trade={trade} />
+        <Detail label="Result">
+          <span
+            className={
+              trade.result === "win"
+                ? "text-positive"
+                : trade.result === "loss"
+                  ? "text-negative"
+                  : "text-muted"
+            }
+          >
+            {trade.result === "be"
+              ? "BE"
+              : (trade.result?.toUpperCase() ?? "—")}
+          </span>
+        </Detail>
+        <Detail
+          label={
+            trade.trade_status === "missed" ? "Informative R" : "Realized R"
+          }
+        >
+          {trade.realized_r != null ? (
+            <RValue value={Number(trade.realized_r)} />
+          ) : (
+            "—"
+          )}
+        </Detail>
+        {trade.execution_error ? (
+          <Detail label="Primary error">
+            {EXECUTION_ERROR_LABELS[trade.execution_error]}
+          </Detail>
+        ) : null}
+        <Detail label="Session">{SESSION_LABELS[trade.session]}</Detail>
         <div className="ml-auto flex gap-2">
           <Button asChild variant="outline">
             <Link href={`/trades/${id}/edit`}>Edit</Link>
@@ -157,7 +111,11 @@ export default async function TradePage({
       <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section>
           {trade.images.length ? (
-            <FeedImageGallery images={trade.images} variant="detail" tradeId={id} />
+            <FeedImageGallery
+              images={trade.images}
+              variant="detail"
+              tradeId={id}
+            />
           ) : (
             <div className="rounded-lg border border-dashed border-border py-20 text-center text-sm text-muted">
               No charts attached.
@@ -165,23 +123,6 @@ export default async function TradePage({
           )}
         </section>
         <aside className="grid content-start gap-6">
-          {isStudy && trade.study_entries.length ? (
-            <section>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-study">
-                Potential entries
-              </h2>
-              <div className="grid gap-2">
-                {trade.study_entries.map((entry, index) => (
-                  <PotentialEntry
-                    key={entry.id}
-                    entry={entry}
-                    index={index}
-                    timezone={preferences.timezone}
-                  />
-                ))}
-              </div>
-            </section>
-          ) : null}
           {trade.notes ? (
             <section>
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-secondary">

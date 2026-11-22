@@ -8,17 +8,25 @@ import { TradeChartImage } from "@/components/trades/trade-chart-image";
 import type { TradeImage } from "@/types/database";
 
 const MODAL_PAGE_SIZE = 3;
-const PREVIEW_PAGE_SIZE = 4;
+const PREVIEW_PAGE_SIZE = 3;
 const labels = {
   htf_analysis: "HTF Analysis",
-  setup: "Setup",
+  setup: "Context",
   entry: "Entry",
   management: "Management",
   exit: "Exit",
   other: "Chart",
 } as const;
 
-export function FeedImageGallery({ images, variant = "feed", tradeId }: { images: TradeImage[]; variant?: "feed" | "detail"; tradeId?: string }) {
+export function FeedImageGallery({
+  images,
+  variant = "feed",
+  tradeId,
+}: {
+  images: TradeImage[];
+  variant?: "feed" | "detail";
+  tradeId?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [pageStart, setPageStart] = useState(0);
   const [previewStart, setPreviewStart] = useState(0);
@@ -68,79 +76,104 @@ export function FeedImageGallery({ images, variant = "feed", tradeId }: { images
       {variant === "detail" ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {images.map((image, index) => (
-            <figure key={image.id} className="relative overflow-hidden rounded-lg border border-border bg-surface">
+            <figure
+              key={image.id}
+              className="relative overflow-hidden rounded-lg border border-border bg-surface"
+            >
               {tradeId ? (
-                <form action={deleteTradeImage} className="absolute right-2 top-2 z-10">
+                <form
+                  action={deleteTradeImage}
+                  className="absolute right-2 top-2 z-10"
+                >
                   <input type="hidden" name="imageId" value={image.id} />
                   <input type="hidden" name="tradeId" value={tradeId} />
-                  <button aria-label="Delete chart" className="grid h-7 w-7 cursor-pointer place-items-center rounded bg-background/90 text-negative transition hover:bg-negative/10">
+                  <button
+                    aria-label="Delete chart"
+                    className="grid h-7 w-7 cursor-pointer place-items-center rounded bg-background/90 text-negative transition hover:bg-negative/10"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </form>
               ) : null}
-              <button type="button" aria-label={`Open ${labels[image.image_type]} chart gallery`} onClick={() => openAt(index)} className="block w-full cursor-zoom-in text-left">
-                <TradeChartImage image={image} alt={`${image.image_type} ${image.timeframe} chart`} sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 35vw" frameAspect={image.capture_preset === "standard" ? "1:1" : "4:3"} className="rounded-none" interactive={false} />
+              <button
+                type="button"
+                aria-label={`Open ${labels[image.image_type]} chart gallery`}
+                onClick={() => openAt(index)}
+                className="block w-full cursor-zoom-in text-left"
+              >
+                <TradeChartImage
+                  image={image}
+                  alt={`${image.image_type} ${image.timeframe} chart`}
+                  sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 35vw"
+                  frameAspect={
+                    image.capture_preset === "standard" ? "1:1" : "4:3"
+                  }
+                  className="rounded-none"
+                  interactive={false}
+                />
               </button>
             </figure>
           ))}
         </div>
       ) : (
-      <div className="relative mx-auto mt-3 w-full px-7">
-        {previewStart > 0 ? (
-          <button
-            type="button"
-            aria-label="Previous preview charts"
-            onClick={() =>
-              setPreviewStart((value) => Math.max(0, value - PREVIEW_PAGE_SIZE))
-            }
-            className="absolute left-0 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md border border-border bg-background/90 shadow-sm transition hover:bg-control-hover"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-        ) : null}
-        <div className="grid grid-cols-4 items-start gap-3">
-          {previewImages.map((image, index) => (
+        <div className="relative mt-4 w-full max-w-3xl px-7">
+          {previewStart > 0 ? (
             <button
-              key={image.id}
               type="button"
-              aria-label={`Open ${labels[image.image_type]} chart`}
-              className="block w-full cursor-zoom-in overflow-hidden rounded-lg border border-border text-left"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                openAt(previewStart + index);
-              }}
+              aria-label="Previous preview charts"
+              onClick={() =>
+                setPreviewStart((value) =>
+                  Math.max(0, value - PREVIEW_PAGE_SIZE),
+                )
+              }
+              className="absolute left-0 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md border border-border bg-background/90 shadow-sm transition hover:bg-control-hover"
             >
-              <TradeChartImage
-                image={image}
-                alt={`${labels[image.image_type]} chart`}
-                frameAspect={
-                  image.capture_preset === "standard" ? "1:1" : "4:3"
-                }
-                interactive={false}
-              />
+              <ChevronLeft className="h-4 w-4" />
             </button>
-          ))}
+          ) : null}
+          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3">
+            {previewImages.map((image, index) => (
+              <button
+                key={image.id}
+                type="button"
+                aria-label={`Open ${labels[image.image_type]} chart`}
+                className="block w-full cursor-zoom-in overflow-hidden rounded-lg border border-border text-left"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  openAt(previewStart + index);
+                }}
+              >
+                <TradeChartImage
+                  image={image}
+                  alt={`${labels[image.image_type]} chart`}
+                  frameAspect={
+                    image.capture_preset === "standard" ? "1:1" : "4:3"
+                  }
+                  interactive={false}
+                />
+              </button>
+            ))}
+          </div>
+          {previewStart + PREVIEW_PAGE_SIZE < images.length ? (
+            <button
+              type="button"
+              aria-label="Next preview charts"
+              onClick={() =>
+                setPreviewStart((value) =>
+                  Math.min(
+                    Math.floor((images.length - 1) / PREVIEW_PAGE_SIZE) *
+                      PREVIEW_PAGE_SIZE,
+                    value + PREVIEW_PAGE_SIZE,
+                  ),
+                )
+              }
+              className="absolute right-0 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md border border-border bg-background/90 shadow-sm transition hover:bg-control-hover"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          ) : null}
         </div>
-        {previewStart + PREVIEW_PAGE_SIZE < images.length ? (
-          <button
-            type="button"
-            aria-label="Next preview charts"
-            onClick={() =>
-              setPreviewStart((value) =>
-                Math.min(
-                  Math.floor((images.length - 1) / PREVIEW_PAGE_SIZE) *
-                    PREVIEW_PAGE_SIZE,
-                  value + PREVIEW_PAGE_SIZE,
-                ),
-              )
-            }
-            className="absolute right-0 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md border border-border bg-background/90 shadow-sm transition hover:bg-control-hover"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        ) : null}
-      </div>
       )}
       {open ? (
         <div

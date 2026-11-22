@@ -6,7 +6,11 @@ import { TradeList } from "./trade-list";
 import { Button } from "@/components/ui/button";
 import { CollapsibleFilterPanel } from "@/components/ui/collapsible-filter-panel";
 import { TIMEFRAMES } from "@/lib/trading/config";
-import { matchesTimeframeFilter, parseTimeframeFilter } from "@/lib/trading/filters";
+import {
+  matchesResultFilter,
+  matchesTimeframeFilter,
+  parseTimeframeFilter,
+} from "@/lib/trading/filters";
 import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/database";
 
@@ -40,18 +44,26 @@ export function TradesExplorer({
   if (filters.direction)
     visible = visible.filter((trade) => trade.direction === filters.direction);
   if (filters.result)
-    visible = visible.filter((trade) => trade.result === filters.result);
+    visible = visible.filter((trade) =>
+      matchesResultFilter(trade, filters.result),
+    );
   if (filters.validity)
-    visible = visible.filter((trade) => trade.setup_validity === filters.validity);
+    visible = visible.filter(
+      (trade) => trade.setup_validity === filters.validity,
+    );
   if (filters.execution)
-    visible = visible.filter((trade) => trade.execution_quality === filters.execution);
+    visible = visible.filter(
+      (trade) => trade.execution_quality === filters.execution,
+    );
   if (filters.status)
     visible = visible.filter((trade) => trade.trade_status === filters.status);
   if (filters.session)
     visible = visible.filter((trade) => trade.session === filters.session);
   const selectedTimeframes = parseTimeframeFilter(filters.timeframes);
   if (selectedTimeframes.length)
-    visible = visible.filter((trade) => matchesTimeframeFilter(trade, selectedTimeframes));
+    visible = visible.filter((trade) =>
+      matchesTimeframeFilter(trade, selectedTimeframes),
+    );
   if (filters.dateValue) {
     const expectedLength =
       filters.dateRange === "year" ? 4 : filters.dateRange === "month" ? 7 : 10;
@@ -70,7 +82,7 @@ export function TradesExplorer({
     ["instrument", "Instrument", instruments],
     ["direction", "Direction", ["long", "short"]],
     ["result", "Result", ["win", "loss", "be"]],
-    ["validity", "Setup validity", ["valid", "invalid"]],
+    ["validity", "Validity", ["valid", "invalid"]],
     ["execution", "Execution", ["good", "bad"]],
     ["status", "Status", ["taken", "missed"]],
     [
@@ -92,7 +104,9 @@ export function TradesExplorer({
       string,
       string
     >;
-    next.timeframes = TIMEFRAMES.filter((timeframe) => formData.getAll("timeframes").includes(timeframe)).join(",");
+    next.timeframes = TIMEFRAMES.filter((timeframe) =>
+      formData.getAll("timeframes").includes(timeframe),
+    ).join(",");
     const query = new URLSearchParams();
     Object.entries(next).forEach(([key, value]) => {
       if (value) query.set(key, value);
@@ -109,7 +123,10 @@ export function TradesExplorer({
       <p className="mb-4 text-sm text-muted">
         {visible.length} recorded entr{visible.length === 1 ? "y" : "ies"}
       </p>
-      <CollapsibleFilterPanel storageKey="trading-journal:trades-filters-open" className="mb-5">
+      <CollapsibleFilterPanel
+        storageKey="trading-journal:trades-filters-open"
+        className="mb-5"
+      >
         <form
           key={JSON.stringify(filters)}
           className="grid gap-3"
@@ -118,46 +135,61 @@ export function TradesExplorer({
             apply(event.currentTarget);
           }}
         >
-        <div className="flex flex-wrap gap-2">
-          {options.map(([name, label, values]) => (
-            <select
-              key={name}
-              name={name}
-              defaultValue={filters[name] ?? ""}
-              className="control px-3 text-sm text-muted"
-            >
-              <option value="">{label}: All</option>
-              {values.map((option) => (
-                <option key={option} value={option}>
-                  {option.replaceAll("_", " ")}
-                </option>
-              ))}
-            </select>
-          ))}
-        </div>
-        <fieldset>
-          <legend className="mb-2 text-xs text-muted">Timeframes · match all selected</legend>
-          <div className="flex flex-wrap gap-1.5">
-            {TIMEFRAMES.map((timeframe) => (
-              <label key={timeframe} className="cursor-pointer">
-                <input className="peer sr-only" type="checkbox" name="timeframes" value={timeframe} defaultChecked={selectedTimeframes.includes(timeframe)} />
-                <span className={cn("grid h-8 place-items-center rounded-md border border-border bg-control px-2.5 text-xs text-muted transition hover:bg-control-hover hover:text-foreground", "peer-checked:border-primary/55 peer-checked:bg-primary/15 peer-checked:text-primary")}>{timeframe}</span>
-              </label>
+          <div className="flex flex-wrap gap-2">
+            {options.map(([name, label, values]) => (
+              <select
+                key={name}
+                name={name}
+                defaultValue={filters[name] ?? ""}
+                className="control px-3 text-sm text-muted"
+              >
+                <option value="">{label}: All</option>
+                {values.map((option) => (
+                  <option key={option} value={option}>
+                    {option.replaceAll("_", " ")}
+                  </option>
+                ))}
+              </select>
             ))}
           </div>
-        </fieldset>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TradeDateFilter
-            initialRange={filters.dateRange}
-            initialValue={filters.dateValue}
-          />
-          <Button
-            variant="outline"
-            className="cursor-pointer border-primary/25 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
-          >
-            Apply
-          </Button>
-        </div>
+          <fieldset>
+            <legend className="mb-2 text-xs text-muted">
+              Timeframes · match all selected
+            </legend>
+            <div className="flex flex-wrap gap-1.5">
+              {TIMEFRAMES.map((timeframe) => (
+                <label key={timeframe} className="cursor-pointer">
+                  <input
+                    className="peer sr-only"
+                    type="checkbox"
+                    name="timeframes"
+                    value={timeframe}
+                    defaultChecked={selectedTimeframes.includes(timeframe)}
+                  />
+                  <span
+                    className={cn(
+                      "grid h-8 place-items-center rounded-md border border-border bg-control px-2.5 text-xs text-muted transition hover:bg-control-hover hover:text-foreground",
+                      "peer-checked:border-primary/55 peer-checked:bg-primary/15 peer-checked:text-primary",
+                    )}
+                  >
+                    {timeframe}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TradeDateFilter
+              initialRange={filters.dateRange}
+              initialValue={filters.dateValue}
+            />
+            <Button
+              variant="outline"
+              className="cursor-pointer border-primary/25 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+            >
+              Apply
+            </Button>
+          </div>
         </form>
       </CollapsibleFilterPanel>
       <TradeList trades={visible} timezone={timezone} />

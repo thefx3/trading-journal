@@ -1,2 +1,0 @@
-import type { Trade } from "@/types/database";
-export function expandStudyEntries(trades: Trade[]): Trade[] { return trades.flatMap((trade) => trade.study_entries.length ? trade.study_entries.map((entry) => ({ ...trade, entry_at: entry.entry_at, direction: entry.direction, planned_rr: Number(entry.planned_rr), result: entry.result, realized_r: Number(entry.realized_r), session: entry.session, session_override: entry.session_override })) : trade.setup_found ? [trade] : []); }

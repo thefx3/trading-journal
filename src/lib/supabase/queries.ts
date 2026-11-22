@@ -4,18 +4,15 @@ import {
   compareTimeframesDescending,
   normalizeJournalMode,
 } from "@/lib/trading/config";
-import type { Instrument, Setup, Trade } from "@/types/database";
-import type { InstrumentGroup } from "@/lib/trading/config";
+import type { Instrument, Trade } from "@/types/database";
 import { cache } from "react";
 
 const TRADE_SELECT =
-  "*, instrument:instruments(*), setup:setups(*), images:trade_images(*), study_entries:study_entries(*)";
+  "*, instrument:instruments(*), images:trade_images(*), study_entries:study_entries(*)";
 
 function normalizeTrade(trade: Trade): Trade {
   return {
     ...trade,
-    setup_id: trade.setup_id ?? null,
-    setup: trade.setup ?? null,
     journal_mode: normalizeJournalMode(trade.journal_mode),
     setup_found: trade.setup_found ?? true,
     images: (trade.images ?? []).toSorted(
@@ -63,23 +60,13 @@ export async function getInstruments(): Promise<Instrument[]> {
   return data ?? [];
 }
 
-export async function getSetups(includeArchived = false): Promise<Setup[]> {
-  const supabase = await createClient();
-  let query = supabase.from("setups").select("*").order("name");
-  if (!includeArchived) query = query.is("archived_at", null);
-  const { data, error } = await query;
-  if (error?.code === "42P01" || error?.message.includes("setups")) return [];
-  if (error) throw error;
-  return (data ?? []) as Setup[];
-}
-
 export async function getTrades(): Promise<Trade[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("trades")
     .select(TRADE_SELECT)
     .order("trade_date", { ascending: false })
-    .order("entry_at", { ascending: false, nullsFirst: false });
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return withSignedImages((data ?? []) as unknown as Trade[]);
 }
@@ -104,14 +91,12 @@ export async function getTradeSummaries(): Promise<Trade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(
-      "*, instrument:instruments(*), setup:setups(*), images:trade_images(id,timeframe,position), study_entries:study_entries(*)",
+      "*, instrument:instruments(*), images:trade_images(id,timeframe,position), study_entries:study_entries(*)",
     )
     .order("trade_date", { ascending: false })
-    .order("entry_at", { ascending: false, nullsFirst: false });
+    .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((trade) =>
-    normalizeTrade(trade as unknown as Trade),
-  );
+  return (data ?? []).map((trade) => normalizeTrade(trade as unknown as Trade));
 }
 
 export async function getTrade(id: string): Promise<Trade | null> {
@@ -130,31 +115,21 @@ export type JournalPreferences = {
   timezone: string;
   timeFormat: "12h" | "24h";
   showSeconds: boolean;
-  pinnedInstruments: InstrumentGroup[];
   theme: "light" | "dark" | "system";
-  defaultSetupId: string | null;
 };
 export const getJournalPreferences = cache(
   async (): Promise<JournalPreferences> => {
     const supabase = await createClient();
     const { data } = await supabase
       .from("profiles")
-      .select(
-        "timezone, time_format, show_seconds, pinned_instrument_groups, theme, default_setup_id",
-      )
+      .select("timezone, time_format, show_seconds, theme")
       .maybeSingle();
     const theme = data?.theme;
     return {
       timezone: data?.timezone ?? "Europe/Paris",
       timeFormat: data?.time_format === "12h" ? "12h" : "24h",
       showSeconds: data?.show_seconds ?? true,
-      pinnedInstruments: (data?.pinned_instrument_groups ?? [
-        "NQ",
-        "ES",
-        "YM",
-      ]) as InstrumentGroup[],
       theme: theme === "light" || theme === "system" ? theme : "dark",
-      defaultSetupId: data?.default_setup_id ?? null,
     };
   },
 );

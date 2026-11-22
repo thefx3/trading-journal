@@ -8,14 +8,15 @@ import { DayOverview } from "@/components/journal/day-overview";
 import { FeedCard } from "@/components/journal/feed-card";
 import { FeedControls } from "@/components/journal/feed-controls";
 import { FeedFilters } from "@/components/journal/feed-filters";
-import { PerformancePanels } from "@/components/journal/journal-sidebar";
-import { calculateMetrics } from "@/lib/trading/metrics";
+import { WeeklyOverview } from "@/components/journal/weekly-overview";
+import type {
+  PerformanceMetrics,
+  WeeklyOverviewMetrics,
+} from "@/lib/trading/metrics";
 import { getPreviousTradingDate } from "@/lib/trading/previous-trading-date";
-import type { InstrumentGroup } from "@/lib/trading/config";
-import type { JournalMode, Setup, Trade } from "@/types/database";
+import type { JournalMode, Trade } from "@/types/database";
 
 type ActiveMode = JournalMode | "all";
-
 function modeFromLocation(fallback: ActiveMode): ActiveMode {
   const value = new URLSearchParams(window.location.search).get("mode");
   return value === "live" || value === "study" || value === "practice"
@@ -31,9 +32,9 @@ export function JournalModeView({
   queryString,
   dayTrades,
   tradeSummaries,
-  timezone,
-  lockedInstrument,
-  setups,
+  dayMetrics,
+  weeklyMetrics,
+  instruments,
 }: {
   initialMode: ActiveMode;
   dateKey: string;
@@ -42,18 +43,16 @@ export function JournalModeView({
   queryString: string;
   dayTrades: Trade[];
   tradeSummaries: Trade[];
-  timezone: string;
-  lockedInstrument?: InstrumentGroup;
-  setups: Setup[];
+  dayMetrics: PerformanceMetrics;
+  weeklyMetrics: WeeklyOverviewMetrics;
+  instruments: string[];
 }) {
   const [activeMode, setActiveMode] = useState(initialMode);
-
   useEffect(() => {
     const syncMode = () => setActiveMode(modeFromLocation("all"));
     window.addEventListener("popstate", syncMode);
     return () => window.removeEventListener("popstate", syncMode);
   }, []);
-
   function changeMode(mode: ActiveMode) {
     if (mode === activeMode) return;
     const url = new URL(window.location.href);
@@ -63,7 +62,6 @@ export function JournalModeView({
     window.history.pushState(null, "", url);
     setActiveMode(mode);
   }
-
   const visibleTrades =
     activeMode === "all"
       ? dayTrades
@@ -75,12 +73,6 @@ export function JournalModeView({
   const daySummaries = visibleSummaries.filter(
     (trade) => trade.trade_date === dateKey,
   );
-  const dayMetrics = calculateMetrics(
-    daySummaries.filter((trade) => trade.journal_mode !== "study"),
-  );
-  const dayStudies = daySummaries.filter(
-    (trade) => trade.journal_mode === "study",
-  ).length;
   const previousDate = getPreviousTradingDate(
     visibleSummaries.map((trade) => trade.trade_date),
     dateKey,
@@ -92,7 +84,7 @@ export function JournalModeView({
   if (previousDate) previousQuery.set("date", previousDate);
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
       <main className="min-w-0">
         <FeedFilters active={activeMode} onChange={changeMode} />
         <p className="mb-3 text-sm text-muted">
@@ -108,9 +100,9 @@ export function JournalModeView({
           ) : null}
         </p>
         {visibleTrades.length ? (
-          <div className="grid gap-4">
+          <div className="divide-y divide-border/70 border-y border-border/70">
             {visibleTrades.map((trade) => (
-              <FeedCard key={trade.id} trade={trade} timezone={timezone} />
+              <FeedCard key={trade.id} trade={trade} />
             ))}
           </div>
         ) : (
@@ -139,16 +131,14 @@ export function JournalModeView({
         <DayOverview
           date={dateKey}
           metrics={dayMetrics}
-          studies={dayStudies}
           queryString={query.toString()}
         />
+        <WeeklyOverview metrics={weeklyMetrics} />
         <FeedControls
           query={query}
-          lockedInstrument={lockedInstrument}
-          setups={setups}
+          instruments={instruments}
           activeMode={activeMode}
         />
-        <PerformancePanels trades={tradeSummaries} activeMode={activeMode} />
       </aside>
     </div>
   );
