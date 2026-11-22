@@ -4,16 +4,22 @@ import { notFound } from "next/navigation";
 import { deleteTrade } from "@/app/actions/trades";
 import { FeedImageGallery } from "@/components/journal/feed-image-gallery";
 import { PageHeader } from "@/components/layout/page-header";
-import { JournalModeBadge } from "@/components/trades/journal-mode";
+import { JournalModeMarker } from "@/components/trades/journal-mode";
 import { RValue } from "@/components/trades/result";
-import {
-  EXECUTION_ERROR_LABELS,
-  TradeReviewBadges,
-} from "@/components/trades/trade-review-badges";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { SESSION_LABELS } from "@/lib/trading/config";
 import { getTrade } from "@/lib/supabase/queries";
+
+const EXECUTION_ERROR_LABELS = {
+  hesitation: "Hesitation",
+  chase: "Chase",
+  oversize: "Oversize",
+  early_entry: "Early entry",
+  late_entry: "Late entry",
+  extra_trade: "Extra trade",
+  other: "Other",
+} as const;
 
 function Detail({
   label,
@@ -52,20 +58,23 @@ export default async function TradePage({
         backHref="/journal"
       />
       <Panel className="ambient-panel mb-8 flex flex-wrap items-center gap-x-6 gap-y-4 p-5">
+        <JournalModeMarker mode={trade.journal_mode} />
         <strong className="text-base">{trade.instrument.symbol}</strong>
-        <JournalModeBadge mode={trade.journal_mode} />
-        {trade.direction ? (
-          <span
-            className={
-              trade.direction === "long"
-                ? "font-semibold text-positive"
-                : "font-semibold text-negative"
-            }
-          >
-            {trade.direction.toUpperCase()}
-          </span>
-        ) : null}
-        <TradeReviewBadges trade={trade} />
+        <Detail label="Direction">
+          {trade.direction
+            ? `${trade.direction[0].toUpperCase()}${trade.direction.slice(1)}`
+            : "—"}
+        </Detail>
+        <Detail label="Validity">
+          {trade.setup_validity
+            ? `${trade.setup_validity[0].toUpperCase()}${trade.setup_validity.slice(1)}`
+            : "—"}
+        </Detail>
+        <Detail label="Execution">
+          {trade.execution_quality
+            ? `${trade.execution_quality[0].toUpperCase()}${trade.execution_quality.slice(1)}`
+            : "—"}
+        </Detail>
         <Detail label="Result">
           <span
             className={
@@ -81,11 +90,7 @@ export default async function TradePage({
               : (trade.result?.toUpperCase() ?? "—")}
           </span>
         </Detail>
-        <Detail
-          label={
-            trade.trade_status === "missed" ? "Informative R" : "Realized R"
-          }
-        >
+        <Detail label="Realized R">
           {trade.realized_r != null ? (
             <RValue value={Number(trade.realized_r)} />
           ) : (

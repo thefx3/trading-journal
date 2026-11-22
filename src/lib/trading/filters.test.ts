@@ -31,9 +31,9 @@ describe("timeframe filters", () => {
 });
 
 describe("result filters", () => {
-  it("filters missed opportunities by their informative outcome", () => {
+  it("filters recorded trades by realized outcome", () => {
     const trade = {
-      trade_status: "missed",
+      trade_status: "taken",
       realized_r: 2,
       result: "win",
       journal_mode: "live",

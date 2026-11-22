@@ -2,28 +2,27 @@ import type { Trade } from "@/types/database";
 import { format, parseISO, startOfWeek } from "date-fns";
 
 export function calculateMetrics(trades: Trade[]) {
-  const taken = trades.filter((trade) => trade.trade_status !== "missed");
-  const wins = taken.filter((trade) => trade.result === "win").length;
-  const losses = taken.filter((trade) => trade.result === "loss").length;
-  const breakEven = taken.filter((trade) => trade.result === "be").length;
+  const wins = trades.filter((trade) => trade.result === "win").length;
+  const losses = trades.filter((trade) => trade.result === "loss").length;
+  const breakEven = trades.filter((trade) => trade.result === "be").length;
   const closed = wins + losses + breakEven;
-  const totalR = taken.reduce(
+  const totalR = trades.reduce(
     (sum, trade) => sum + Number(trade.realized_r ?? 0),
     0,
   );
-  const grossWins = taken.reduce(
+  const grossWins = trades.reduce(
     (sum, trade) => sum + Math.max(0, Number(trade.realized_r ?? 0)),
     0,
   );
   const grossLosses = Math.abs(
-    taken.reduce(
+    trades.reduce(
       (sum, trade) => sum + Math.min(0, Number(trade.realized_r ?? 0)),
       0,
     ),
   );
   return {
-    total: taken.length,
-    totalTrades: taken.length,
+    total: trades.length,
+    totalTrades: trades.length,
     wins,
     losses,
     breakEven,
@@ -48,7 +47,6 @@ export function calculateWeeklyOverview(trades: Trade[], selectedDate: string) {
   const counted = trades.filter(
     (trade) =>
       trade.journal_mode === "live" &&
-      trade.trade_status !== "missed" &&
       trade.trade_date >= start &&
       trade.trade_date <= selectedDate,
   );

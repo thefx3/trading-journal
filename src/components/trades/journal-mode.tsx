@@ -1,23 +1,38 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { JOURNAL_MODES, normalizeJournalMode } from "@/lib/trading/config";
 import { cn } from "@/lib/utils";
 import type { JournalMode } from "@/types/database";
 
-export function JournalModeBadge({
-  mode,
-  className,
-}: {
-  mode?: JournalMode | null;
-  className?: string;
-}) {
-  const config = JOURNAL_MODES[normalizeJournalMode(mode)];
+const MODE_MARKERS: Record<JournalMode, { letter: string; className: string }> =
+  {
+    live: {
+      letter: "L",
+      className: "border-live/25 bg-live/10 text-live",
+    },
+    study: {
+      letter: "S",
+      className: "border-study/25 bg-study/10 text-study",
+    },
+    practice: {
+      letter: "P",
+      className: "border-practice/25 bg-practice/10 text-practice",
+    },
+  };
+
+export function JournalModeMarker({ mode }: { mode?: JournalMode | null }) {
+  const normalizedMode = normalizeJournalMode(mode);
+  const marker = MODE_MARKERS[normalizedMode];
   return (
-    <Badge
-      className={cn("uppercase tracking-wide", config.badgeClass, className)}
+    <span
+      aria-label={JOURNAL_MODES[normalizedMode].label}
+      title={JOURNAL_MODES[normalizedMode].label}
+      className={cn(
+        "grid h-7 w-7 shrink-0 place-items-center rounded-full border text-[11px] font-bold",
+        marker.className,
+      )}
     >
-      {config.label}
-    </Badge>
+      {marker.letter}
+    </span>
   );
 }
 export function ModeFilter({

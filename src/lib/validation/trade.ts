@@ -20,7 +20,6 @@ export const tradeSchema = z
     realizedR: requiredNumber.pipe(z.number().min(-100).max(100)),
     setupValidity: z.enum(["valid", "invalid"]),
     executionQuality: z.enum(["good", "bad"]),
-    tradeStatus: z.enum(["taken", "missed"]),
     executionError: optionalString.pipe(
       z
         .enum([
@@ -45,18 +44,6 @@ export const tradeSchema = z
     notes: z.string().max(10000).optional(),
   })
   .superRefine((input, context) => {
-    if (input.tradeStatus === "missed" && input.executionQuality !== "bad")
-      context.addIssue({
-        code: "custom",
-        path: ["executionQuality"],
-        message: "A missed trade is a bad execution",
-      });
-    if (input.tradeStatus === "missed" && input.setupValidity !== "valid")
-      context.addIssue({
-        code: "custom",
-        path: ["setupValidity"],
-        message: "Only a valid opportunity can be missed",
-      });
     if (input.setupValidity === "invalid" && input.executionQuality !== "bad")
       context.addIssue({
         code: "custom",

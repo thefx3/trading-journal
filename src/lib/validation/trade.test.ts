@@ -11,7 +11,6 @@ const baseTrade = {
   realizedR: "2",
   setupValidity: "valid",
   executionQuality: "good",
-  tradeStatus: "taken",
   executionError: "",
   session: "new_york_am",
   notes: "",
@@ -32,18 +31,6 @@ describe("tradeSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts an informative R for a missed valid opportunity", () => {
-    const result = tradeSchema.safeParse({
-      ...baseTrade,
-      setupValidity: "valid",
-      executionQuality: "bad",
-      tradeStatus: "missed",
-      executionError: "hesitation",
-      realizedR: "2",
-    });
-    expect(result.success).toBe(true);
-  });
-
   it("requires a reason for bad execution", () => {
     const result = tradeSchema.safeParse({
       ...baseTrade,
@@ -53,14 +40,11 @@ describe("tradeSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects a missed invalid setup", () => {
+  it("rejects a good execution on an invalid opportunity", () => {
     const result = tradeSchema.safeParse({
       ...baseTrade,
       setupValidity: "invalid",
-      executionQuality: "bad",
-      tradeStatus: "missed",
-      executionError: "hesitation",
-      realizedR: "2",
+      executionQuality: "good",
     });
     expect(result.success).toBe(false);
   });

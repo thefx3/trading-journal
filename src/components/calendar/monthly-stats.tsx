@@ -3,9 +3,7 @@ import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/database";
 
 export function MonthlyStats({ trades }: { trades: Trade[] }) {
-  const liveTrades = trades.filter(
-    (trade) => trade.journal_mode === "live" && trade.trade_status !== "missed",
-  );
+  const liveTrades = trades.filter((trade) => trade.journal_mode === "live");
   const metrics = calculateMetrics(liveTrades);
   const daily = liveTrades.reduce(
     (map, trade) =>
@@ -20,7 +18,7 @@ export function MonthlyStats({ trades }: { trades: Trade[] }) {
     {
       label: "Cumulative R",
       value: `${metrics.totalR > 0 ? "+" : ""}${metrics.totalR.toFixed(1)}R`,
-      detail: "Live · missed excluded",
+      detail: "Recorded live trades",
       valueClass: metrics.totalR < 0 ? "text-negative" : "text-positive",
     },
     {
@@ -32,7 +30,7 @@ export function MonthlyStats({ trades }: { trades: Trade[] }) {
     {
       label: "Win rate",
       value: `${metrics.winRate.toFixed(0)}%`,
-      detail: "Taken live trades",
+      detail: "Live trades",
       valueClass: "text-primary",
     },
     {

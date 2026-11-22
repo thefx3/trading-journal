@@ -63,7 +63,6 @@ export function TradeCalendar({
           const weekTrades = summaryTrades.filter(
             (trade) =>
               trade.journal_mode === "live" &&
-              trade.trade_status !== "missed" &&
               trade.trade_date >= first &&
               trade.trade_date <= last,
           );
@@ -119,10 +118,7 @@ export function TradeCalendar({
                               (trade) => trade.journal_mode === mode,
                             );
                             if (!modeTrades.length) return null;
-                            const counted = modeTrades.filter(
-                              (trade) => trade.trade_status !== "missed",
-                            );
-                            const r = counted.reduce(
+                            const r = modeTrades.reduce(
                               (sum, trade) =>
                                 sum + Number(trade.realized_r ?? 0),
                               0,

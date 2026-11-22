@@ -41,6 +41,7 @@ export default async function JournalPage({
     ),
   );
   query.delete("page");
+  query.delete("status");
   const selectedTimeframes = parseTimeframeFilter(params.timeframes);
   const filteredTrades = allTrades.filter(
     (trade) =>
@@ -49,7 +50,6 @@ export default async function JournalPage({
       (!params.session || trade.session === params.session) &&
       (!params.validity || trade.setup_validity === params.validity) &&
       (!params.execution || trade.execution_quality === params.execution) &&
-      (!params.status || trade.trade_status === params.status) &&
       matchesResultFilter(trade, params.result) &&
       matchesTimeframeFilter(trade, selectedTimeframes),
   );

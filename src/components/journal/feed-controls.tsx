@@ -59,15 +59,6 @@ const STATIC_FILTERS = [
       ["bad", "Bad"],
     ],
   },
-  {
-    key: "status",
-    label: "Status",
-    values: [
-      ["", "All"],
-      ["taken", "Taken"],
-      ["missed", "Missed"],
-    ],
-  },
 ] as const;
 
 export function FeedControls({

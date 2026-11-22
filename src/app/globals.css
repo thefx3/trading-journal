@@ -35,7 +35,7 @@
   --control: #161b24;
   --control-hover: #202735;
   --primary: #6da8ff;
-  --live: #facc15;
+  --live: #4ade80;
   --study: #c084fc;
   --practice: #fb923c;
   --positive: #4ade80;
@@ -58,7 +58,7 @@
   --control: #f3f6fa;
   --control-hover: #e8edf5;
   --primary: #2563d9;
-  --live: #a16207;
+  --live: #15803d;
   --study: #7e22ce;
   --practice: #c2410c;
   --positive: #15803d;
@@ -225,19 +225,6 @@ textarea {
 .overflow-hidden > .grid.grid-cols-7.border-b > * + * {
   border-left: 1px solid var(--border);
 }
-form[data-mode="study"] section.rounded-xl > fieldset + div {
-  display: none;
-}
-form#trade-form label:has(select[name="session"]),
-form#trade-form label:has(select[name="result"]) {
-  align-content: start;
-}
-form#trade-form select[name="session"],
-form#trade-form select[name="result"] {
-  min-height: 2.5rem;
-  padding-top: 0.65rem;
-  padding-bottom: 0.65rem;
-}
 form#trade-form button[aria-label^="Remove chart"] {
   cursor: pointer;
   background: transparent;
@@ -273,21 +260,6 @@ a[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.58;
 }
-.setup-field {
-  border-radius: 0.5rem;
-}
-form#trade-form > section.rounded-xl {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
-}
-form#trade-form > section.rounded-xl > h2 {
-  display: none;
-}
-form#trade-form > section.rounded-xl > fieldset {
-  margin-bottom: 1.5rem;
-}
 .settings-grid section form:first-of-type button {
   white-space: nowrap;
   cursor: pointer;
@@ -314,12 +286,6 @@ button[class*="bg-red-600"]:hover {
   border-color: #b91c1c;
   background: #b91c1c;
   color: white;
-}
-
-@media (min-width: 1280px) {
-  form#trade-form > section:first-of-type {
-    margin-top: -8.125rem;
-  }
 }
 
 /* Compatibility bridge while legacy feature surfaces migrate to semantic tokens. */
@@ -355,41 +321,6 @@ button[class*="bg-red-600"]:hover {
 .text-\[10px\] {
   font-size: 0.8125rem;
   line-height: 1.125rem;
-}
-
-@media (min-width: 1024px) {
-  form.grid section.rounded-xl > h2 + div.grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  form.grid section.rounded-xl > div.mt-5.grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-form[data-mode="study"] section.rounded-xl > h2 + div.grid > label:last-child {
-  display: none;
-}
-form#trade-form section.rounded-xl > h2 + div.grid label small {
-  display: none;
-}
-form#trade-form select[name="session"],
-form#trade-form select[name="result"],
-form#trade-form + div section label:nth-child(2) select,
-form#trade-form + div section label:nth-child(5) select {
-  pointer-events: none;
-  cursor: default;
-  height: auto;
-  appearance: none;
-  border: 0;
-  background: transparent;
-  background-image: none;
-  padding: 0;
-  color: var(--secondary);
-  font-weight: 600;
-  box-shadow: none;
-}
-form#trade-form select[name="result"] option[value="open"] {
-  display: none;
 }
 
 /* Kept outside Tailwind layers so active state always wins over utility backgrounds. */

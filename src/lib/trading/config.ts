@@ -5,27 +5,23 @@ export const JOURNAL_MODES: Record<
   {
     label: string;
     description: string;
-    badgeClass: string;
     activeClass: string;
   }
 > = {
   live: {
     label: "Live",
     description: "Executed in real market conditions.",
-    badgeClass: "border-live/35 bg-live/10 text-live",
     activeClass: "border-live/50 bg-live/10 text-live",
   },
   study: {
     label: "Study",
     description: "Review historical price action and study your model.",
-    badgeClass: "border-study/35 bg-study/10 text-study",
     activeClass: "border-study/50 bg-study/10 text-study",
   },
   practice: {
     label: "Practice",
     description:
       "Practice on historical price action without knowing what comes next.",
-    badgeClass: "border-practice/35 bg-practice/10 text-practice",
     activeClass: "border-practice/50 bg-practice/10 text-practice",
   },
 };

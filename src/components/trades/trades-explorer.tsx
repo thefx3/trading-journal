@@ -55,8 +55,6 @@ export function TradesExplorer({
     visible = visible.filter(
       (trade) => trade.execution_quality === filters.execution,
     );
-  if (filters.status)
-    visible = visible.filter((trade) => trade.trade_status === filters.status);
   if (filters.session)
     visible = visible.filter((trade) => trade.session === filters.session);
   const selectedTimeframes = parseTimeframeFilter(filters.timeframes);
@@ -84,7 +82,6 @@ export function TradesExplorer({
     ["result", "Result", ["win", "loss", "be"]],
     ["validity", "Validity", ["valid", "invalid"]],
     ["execution", "Execution", ["good", "bad"]],
-    ["status", "Status", ["taken", "missed"]],
     [
       "session",
       "Session",

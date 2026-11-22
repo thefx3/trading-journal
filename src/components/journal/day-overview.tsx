@@ -59,9 +59,7 @@ export function DayOverview({
           </span>
           <div>
             <h2 className="section-kicker text-foreground">Day overview</h2>
-            <p className="mt-0.5 text-xs text-subtle">
-              Live · missed trades excluded
-            </p>
+            <p className="mt-0.5 text-xs text-subtle">Recorded live trades</p>
           </div>
         </div>
         <div className="flex items-center gap-1">

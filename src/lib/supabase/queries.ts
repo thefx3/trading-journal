@@ -9,6 +9,7 @@ import { cache } from "react";
 
 const TRADE_SELECT =
   "*, instrument:instruments(*), images:trade_images(*), study_entries:study_entries(*)";
+const RECORDED_TRADE_FILTER = "trade_status.eq.taken,trade_status.is.null";
 
 function normalizeTrade(trade: Trade): Trade {
   return {
@@ -65,6 +66,7 @@ export async function getTrades(): Promise<Trade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(TRADE_SELECT)
+    .or(RECORDED_TRADE_FILTER)
     .order("trade_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -77,6 +79,7 @@ export async function getTradesByIds(ids: string[]): Promise<Trade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(TRADE_SELECT)
+    .or(RECORDED_TRADE_FILTER)
     .in("id", ids);
   if (error) throw error;
   const trades = await withSignedImages((data ?? []) as unknown as Trade[]);
@@ -93,6 +96,7 @@ export async function getTradeSummaries(): Promise<Trade[]> {
     .select(
       "*, instrument:instruments(*), images:trade_images(id,timeframe,position), study_entries:study_entries(*)",
     )
+    .or(RECORDED_TRADE_FILTER)
     .order("trade_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -105,6 +109,7 @@ export async function getTrade(id: string): Promise<Trade | null> {
     .from("trades")
     .select(TRADE_SELECT)
     .eq("id", id)
+    .or(RECORDED_TRADE_FILTER)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;

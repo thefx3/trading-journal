@@ -27,7 +27,6 @@ import type {
   Instrument,
   JournalMode,
   Trade,
-  TradeStatus,
   SetupValidity,
 } from "@/types/database";
 import {
@@ -212,9 +211,6 @@ export function TradeForm({
   );
   const [executionQuality, setExecutionQuality] = useState<ExecutionQuality>(
     trade?.execution_quality ?? "good",
-  );
-  const [tradeStatus, setTradeStatus] = useState<TradeStatus>(
-    trade?.trade_status ?? "taken",
   );
   const [executionError, setExecutionError] = useState<ExecutionError | null>(
     trade?.execution_error ?? null,
@@ -552,17 +548,10 @@ export function TradeForm({
     setExecutionQuality(next);
     if (next === "good") setExecutionError(null);
   }
-  function changeStatus(next: TradeStatus) {
-    setTradeStatus(next);
-    if (next === "missed") {
-      setExecutionQuality("bad");
-    }
-  }
   function changeSetupValidity(next: SetupValidity) {
     setSetupValidity(next);
     if (next === "invalid") {
       setExecutionQuality("bad");
-      if (tradeStatus === "missed") changeStatus("taken");
     }
   }
   const cropItem =
@@ -684,7 +673,7 @@ export function TradeForm({
             setUploadError("Frame every manual chart before saving the trade.");
           }
         }}
-        className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,.85fr)]"
+        className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)]"
       >
         <input type="hidden" name="tradeId" value={trade?.id ?? ""} />
         <input
@@ -705,7 +694,6 @@ export function TradeForm({
         <input type="hidden" name="direction" value={direction} />
         <input type="hidden" name="setupValidity" value={setupValidity} />
         <input type="hidden" name="executionQuality" value={executionQuality} />
-        <input type="hidden" name="tradeStatus" value={tradeStatus} />
         <input
           type="hidden"
           name="executionError"
@@ -766,13 +754,13 @@ export function TradeForm({
             ),
           )}
         />
-        <section>
+        <section className="surface p-5 sm:p-6">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider">
                 Charts
               </h2>
-              <p className="mt-1 text-sm text-zinc-600">
+              <p className="mt-1 text-sm text-muted">
                 Add up to 6 PNG, JPEG or WebP charts.
               </p>
             </div>
@@ -959,7 +947,7 @@ export function TradeForm({
                 Classify the opportunity and the quality of your execution.
               </p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <ChoiceField
                 label="Validity"
                 value={setupValidity}
@@ -981,15 +969,6 @@ export function TradeForm({
                 onChange={(value) =>
                   changeExecutionQuality(value as ExecutionQuality)
                 }
-              />
-              <ChoiceField
-                label="Status"
-                value={tradeStatus}
-                options={[
-                  ["taken", "Taken"],
-                  ["missed", "Missed"],
-                ]}
-                onChange={(value) => changeStatus(value as TradeStatus)}
               />
             </div>
             {executionQuality === "bad" ? (
@@ -1060,7 +1039,7 @@ export function TradeForm({
           </div>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <div>
-              <span className="mb-2 block text-sm font-medium text-zinc-300">
+              <span className="mb-2 block text-sm font-medium text-secondary">
                 Direction
               </span>
               <div className="grid grid-cols-2 gap-2">
@@ -1083,14 +1062,7 @@ export function TradeForm({
                 ))}
               </div>
             </div>
-            <Field
-              label="Realized R"
-              hint={
-                tradeStatus === "missed"
-                  ? "Informative only — excluded from stats"
-                  : "Result is derived automatically"
-              }
-            >
+            <Field label="Realized R" hint="Result is derived automatically">
               <Input
                 name="realizedR"
                 type="number"

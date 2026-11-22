@@ -41,37 +41,27 @@ function occurrence(overrides: Partial<Trade>): Trade {
 }
 
 describe("performance metrics", () => {
-  it("keeps a missed opportunity's informative R out of actual P&L", () => {
+  it("calculates recorded trade performance", () => {
     const trades = [
       occurrence({}),
       occurrence({
-        trade_status: "missed",
-        execution_quality: "bad",
-        execution_error: "hesitation",
-        result: "win",
-        realized_r: 5,
-        theoretical_r: null,
+        result: "loss",
+        realized_r: -1,
       }),
     ];
     expect(calculateMetrics(trades)).toMatchObject({
-      total: 1,
+      total: 2,
       wins: 1,
-      totalR: 2,
+      losses: 1,
+      totalR: 1,
     });
   });
 
-  it("builds the current weekly recap from taken live trades only", () => {
+  it("builds the current weekly recap from live trades only", () => {
     const trades = [
       occurrence({ trade_date: "2026-09-07", realized_r: 2 }),
       occurrence({ trade_date: "2026-09-08", result: "loss", realized_r: -1 }),
       occurrence({ trade_date: "2026-09-08", result: "win", realized_r: 3 }),
-      occurrence({
-        trade_date: "2026-09-09",
-        trade_status: "missed",
-        execution_quality: "bad",
-        execution_error: "hesitation",
-        realized_r: 8,
-      }),
       occurrence({
         trade_date: "2026-09-09",
         journal_mode: "practice",

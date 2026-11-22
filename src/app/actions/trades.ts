@@ -120,7 +120,7 @@ export async function saveTrade(
     realized_r: input.realizedR,
     setup_validity: input.setupValidity,
     execution_quality: input.executionQuality,
-    trade_status: input.tradeStatus,
+    trade_status: "taken" as const,
     theoretical_r: null,
     execution_error: input.executionError,
     journal_mode: input.journalMode,
