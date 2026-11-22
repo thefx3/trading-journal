@@ -57,10 +57,7 @@ export function DayOverview({
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
             <Activity className="h-4 w-4" />
           </span>
-          <div>
-            <h2 className="section-kicker text-foreground">Day overview</h2>
-            <p className="mt-0.5 text-xs text-subtle">Recorded live trades</p>
-          </div>
+          <h2 className="section-kicker text-foreground">Day overview</h2>
         </div>
         <div className="flex items-center gap-1">
           <button

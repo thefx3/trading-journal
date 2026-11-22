@@ -18,7 +18,7 @@ export function MonthlyStats({ trades }: { trades: Trade[] }) {
     {
       label: "Cumulative R",
       value: `${metrics.totalR > 0 ? "+" : ""}${metrics.totalR.toFixed(1)}R`,
-      detail: "Recorded live trades",
+      detail: "Live trades",
       valueClass: metrics.totalR < 0 ? "text-negative" : "text-positive",
     },
     {

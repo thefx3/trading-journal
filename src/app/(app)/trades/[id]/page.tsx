@@ -21,21 +21,8 @@ const EXECUTION_ERROR_LABELS = {
   other: "Other",
 } as const;
 
-function Detail({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-w-20">
-      <span className="block text-xs text-muted">{label}</span>
-      <strong className="mt-1 block text-sm font-medium text-foreground">
-        {children}
-      </strong>
-    </div>
-  );
+function capitalize(value: string | null) {
+  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : "—";
 }
 
 export default async function TradePage({
@@ -57,25 +44,19 @@ export default async function TradePage({
         description={`${SESSION_LABELS[trade.session]} · ${trade.journal_mode}`}
         backHref="/journal"
       />
-      <Panel className="ambient-panel mb-8 flex flex-wrap items-center gap-x-6 gap-y-4 p-5">
-        <JournalModeMarker mode={trade.journal_mode} />
-        <strong className="text-base">{trade.instrument.symbol}</strong>
-        <Detail label="Direction">
-          {trade.direction
-            ? `${trade.direction[0].toUpperCase()}${trade.direction.slice(1)}`
-            : "—"}
-        </Detail>
-        <Detail label="Validity">
-          {trade.setup_validity
-            ? `${trade.setup_validity[0].toUpperCase()}${trade.setup_validity.slice(1)}`
-            : "—"}
-        </Detail>
-        <Detail label="Execution">
-          {trade.execution_quality
-            ? `${trade.execution_quality[0].toUpperCase()}${trade.execution_quality.slice(1)}`
-            : "—"}
-        </Detail>
-        <Detail label="Result">
+      <Panel className="ambient-panel mb-8 overflow-hidden p-0">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-5 text-sm text-secondary">
+          <JournalModeMarker mode={trade.journal_mode} />
+          <strong className="text-base text-foreground">
+            {trade.instrument.symbol}
+          </strong>
+          <span className="text-border">|</span>
+          <span>{capitalize(trade.direction)}</span>
+          <span className="text-border">|</span>
+          <span>{capitalize(trade.setup_validity)}</span>
+          <span className="text-border">|</span>
+          <span>{capitalize(trade.execution_quality)}</span>
+          <span className="text-border">|</span>
           <span
             className={
               trade.result === "win"
@@ -89,21 +70,22 @@ export default async function TradePage({
               ? "BE"
               : (trade.result?.toUpperCase() ?? "—")}
           </span>
-        </Detail>
-        <Detail label="Realized R">
+          {trade.execution_error ? (
+            <>
+              <span className="text-border">|</span>
+              <span>{EXECUTION_ERROR_LABELS[trade.execution_error]}</span>
+            </>
+          ) : null}
+          <span className="text-border">|</span>
+          <span>{SESSION_LABELS[trade.session]}</span>
           {trade.realized_r != null ? (
-            <RValue value={Number(trade.realized_r)} />
-          ) : (
-            "—"
-          )}
-        </Detail>
-        {trade.execution_error ? (
-          <Detail label="Primary error">
-            {EXECUTION_ERROR_LABELS[trade.execution_error]}
-          </Detail>
-        ) : null}
-        <Detail label="Session">{SESSION_LABELS[trade.session]}</Detail>
-        <div className="ml-auto flex gap-2">
+            <RValue
+              value={Number(trade.realized_r)}
+              className="ml-auto text-xl font-semibold"
+            />
+          ) : null}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-border/70 px-5 py-3">
           <Button asChild variant="outline">
             <Link href={`/trades/${id}/edit`}>Edit</Link>
           </Button>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { format } from "date-fns";
 import { FeedImageGallery } from "@/components/journal/feed-image-gallery";
 import { JournalModeMarker } from "@/components/trades/journal-mode";
 import { RValue } from "@/components/trades/result";
@@ -22,20 +21,15 @@ export function FeedCard({ trade }: { trade: Trade }) {
       >
         <div className="flex min-w-0 items-center gap-3">
           <JournalModeMarker mode={trade.journal_mode} />
-          <div className="min-w-0">
-            <p className="truncate text-sm text-secondary transition group-hover:text-foreground sm:text-base">
-              <strong className="font-semibold text-foreground">
-                {trade.instrument.symbol}
-              </strong>
-              <span className="mx-2 text-subtle">|</span>
-              {direction}
-              <span className="mx-2 text-subtle">|</span>
-              {SESSION_LABELS[trade.session]}
-            </p>
-            <p className="mt-1 text-xs text-subtle">
-              {format(new Date(`${trade.trade_date}T12:00:00`), "dd.MM.yy")}
-            </p>
-          </div>
+          <p className="truncate text-sm text-secondary transition group-hover:text-foreground sm:text-base">
+            <strong className="font-semibold text-foreground">
+              {trade.instrument.symbol}
+            </strong>
+            <span className="mx-2 text-subtle">|</span>
+            {direction}
+            <span className="mx-2 text-subtle">|</span>
+            {SESSION_LABELS[trade.session]}
+          </p>
         </div>
         <RValue
           value={Number(trade.realized_r ?? 0)}

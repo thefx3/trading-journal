@@ -1,22 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
-import { ArrowDown } from "lucide-react";
 import { DayOverview } from "@/components/journal/day-overview";
-import { FeedCard } from "@/components/journal/feed-card";
 import { FeedControls } from "@/components/journal/feed-controls";
 import { FeedFilters } from "@/components/journal/feed-filters";
+import { WeeklyFeed } from "@/components/journal/weekly-feed";
 import { WeeklyOverview } from "@/components/journal/weekly-overview";
 import type {
   PerformanceMetrics,
   WeeklyOverviewMetrics,
 } from "@/lib/trading/metrics";
-import { getPreviousTradingDate } from "@/lib/trading/previous-trading-date";
 import type { JournalMode, Trade } from "@/types/database";
 
 type ActiveMode = JournalMode | "all";
+
 function modeFromLocation(fallback: ActiveMode): ActiveMode {
   const value = new URLSearchParams(window.location.search).get("mode");
   return value === "live" || value === "study" || value === "practice"
@@ -26,33 +25,36 @@ function modeFromLocation(fallback: ActiveMode): ActiveMode {
 
 export function JournalModeView({
   initialMode,
-  dateKey,
   selectedDate,
   hasExplicitDate,
   queryString,
-  dayTrades,
-  tradeSummaries,
-  dayMetrics,
+  weekDays,
+  weekTrades,
+  dayMetricsByDate,
   weeklyMetrics,
   instruments,
+  todayKey,
 }: {
   initialMode: ActiveMode;
-  dateKey: string;
   selectedDate: string;
   hasExplicitDate: boolean;
   queryString: string;
-  dayTrades: Trade[];
-  tradeSummaries: Trade[];
-  dayMetrics: PerformanceMetrics;
+  weekDays: string[];
+  weekTrades: Trade[];
+  dayMetricsByDate: Record<string, PerformanceMetrics>;
   weeklyMetrics: WeeklyOverviewMetrics;
   instruments: string[];
+  todayKey: string;
 }) {
   const [activeMode, setActiveMode] = useState(initialMode);
+  const [activeDate, setActiveDate] = useState(selectedDate);
+
   useEffect(() => {
     const syncMode = () => setActiveMode(modeFromLocation("all"));
     window.addEventListener("popstate", syncMode);
     return () => window.removeEventListener("popstate", syncMode);
   }, []);
+
   function changeMode(mode: ActiveMode) {
     if (mode === activeMode) return;
     const url = new URL(window.location.href);
@@ -62,77 +64,62 @@ export function JournalModeView({
     window.history.pushState(null, "", url);
     setActiveMode(mode);
   }
-  const visibleTrades =
-    activeMode === "all"
-      ? dayTrades
-      : dayTrades.filter((trade) => trade.journal_mode === activeMode);
-  const visibleSummaries =
-    activeMode === "all"
-      ? tradeSummaries
-      : tradeSummaries.filter((trade) => trade.journal_mode === activeMode);
-  const daySummaries = visibleSummaries.filter(
-    (trade) => trade.trade_date === dateKey,
+
+  const visibleTrades = useMemo(
+    () =>
+      activeMode === "all"
+        ? weekTrades
+        : weekTrades.filter((trade) => trade.journal_mode === activeMode),
+    [activeMode, weekTrades],
   );
-  const previousDate = getPreviousTradingDate(
-    visibleSummaries.map((trade) => trade.trade_date),
-    dateKey,
-  );
+  const updateActiveDate = useCallback((date: string) => {
+    setActiveDate((current) => (current === date ? current : date));
+  }, []);
   const query = new URLSearchParams(queryString);
   if (activeMode === "all") query.delete("mode");
   else query.set("mode", activeMode);
-  const previousQuery = new URLSearchParams(query);
-  if (previousDate) previousQuery.set("date", previousDate);
+  const resolvedQuery = query.toString();
+  const firstDay = weekDays[0] ?? selectedDate;
+  const lastDay = weekDays[6] ?? selectedDate;
+  const dayMetrics = dayMetricsByDate[activeDate] ?? dayMetricsByDate[firstDay];
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
       <main className="min-w-0">
         <FeedFilters active={activeMode} onChange={changeMode} />
-        <p className="mb-3 text-sm text-muted">
-          {daySummaries.length} entr{daySummaries.length === 1 ? "y" : "ies"} on{" "}
-          {format(parseISO(selectedDate), "d MMMM yyyy")}.
+        <p className="mb-2 text-sm text-muted">
+          {visibleTrades.length} entr{visibleTrades.length === 1 ? "y" : "ies"}
+          <span className="mx-2 text-border">·</span>
+          {format(parseISO(firstDay), "d MMM")} —{" "}
+          {format(parseISO(lastDay), "d MMM yyyy")}
           {hasExplicitDate ? (
             <>
-              {" "}
+              <span className="mx-2 text-border">·</span>
               <Link href="/journal" className="text-primary hover:opacity-80">
-                Back to today
+                Current week
               </Link>
             </>
           ) : null}
         </p>
-        {visibleTrades.length ? (
-          <div className="divide-y divide-border/70 border-y border-border/70">
-            {visibleTrades.map((trade) => (
-              <FeedCard key={trade.id} trade={trade} />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-border py-16 text-center">
-            <p className="font-medium">No entries for this day.</p>
-            <p className="mt-1 text-sm text-muted">
-              Try another filter or continue to the previous trading day.
-            </p>
-          </div>
-        )}
-        {previousDate ? (
-          <Link
-            href={`/journal?${previousQuery}`}
-            className="surface mt-5 flex items-center justify-center gap-2 px-4 py-4 text-sm text-secondary transition hover:border-primary/30 hover:bg-primary/[0.045] hover:text-foreground"
-          >
-            <ArrowDown className="h-4 w-4" />
-            View trades from {format(parseISO(previousDate), "d MMMM yyyy")}
-          </Link>
-        ) : (
-          <p className="mt-5 border-t border-border pt-4 text-center text-xs text-muted">
-            No earlier trading day matches these filters.
-          </p>
-        )}
+        <WeeklyFeed
+          days={weekDays}
+          trades={visibleTrades}
+          selectedDate={selectedDate}
+          activeDate={activeDate}
+          todayKey={todayKey}
+          queryString={resolvedQuery}
+          onActiveDateChange={updateActiveDate}
+        />
       </main>
       <aside className="grid content-start gap-3 pt-4">
-        <DayOverview
-          date={dateKey}
-          metrics={dayMetrics}
-          queryString={query.toString()}
-        />
+        {dayMetrics ? (
+          <DayOverview
+            key={activeDate}
+            date={activeDate}
+            metrics={dayMetrics}
+            queryString={resolvedQuery}
+          />
+        ) : null}
         <WeeklyOverview metrics={weeklyMetrics} />
         <FeedControls
           query={query}

@@ -7,6 +7,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
+import { RValue } from "@/components/trades/result";
 import { cn } from "@/lib/utils";
 import type { JournalMode, Trade } from "@/types/database";
 
@@ -91,6 +92,10 @@ export function TradeCalendar({
               {days.map((day) => {
                 const key = format(day, "yyyy-MM-dd");
                 const entries = grouped.get(key) ?? [];
+                const dayR = entries.reduce(
+                  (sum, trade) => sum + Number(trade.realized_r ?? 0),
+                  0,
+                );
                 return (
                   <Link
                     key={key}
@@ -102,14 +107,22 @@ export function TradeCalendar({
                       isToday(day) && "bg-primary/[0.075]",
                     )}
                   >
-                    <span
-                      className={cn(
-                        "text-sm text-muted",
-                        isToday(day) && "font-semibold text-primary",
-                      )}
-                    >
-                      {format(day, "d")}
-                    </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <span
+                        className={cn(
+                          "text-sm text-muted",
+                          isToday(day) && "font-semibold text-primary",
+                        )}
+                      >
+                        {format(day, "d")}
+                      </span>
+                      {entries.length ? (
+                        <RValue
+                          value={dayR}
+                          className="text-sm font-semibold"
+                        />
+                      ) : null}
+                    </div>
                     {entries.length ? (
                       <div className="mt-2 grid gap-1">
                         {(["live", "study", "practice"] as const).map(
@@ -118,11 +131,6 @@ export function TradeCalendar({
                               (trade) => trade.journal_mode === mode,
                             );
                             if (!modeTrades.length) return null;
-                            const r = modeTrades.reduce(
-                              (sum, trade) =>
-                                sum + Number(trade.realized_r ?? 0),
-                              0,
-                            );
                             return (
                               <span
                                 key={mode}
@@ -131,8 +139,7 @@ export function TradeCalendar({
                                   MODE_STYLES[mode],
                                 )}
                               >
-                                {MODE_LABELS[mode]} · {modeTrades.length} ·{" "}
-                                {signedR(r)}
+                                {MODE_LABELS[mode]} · {modeTrades.length}
                               </span>
                             );
                           },
@@ -143,12 +150,9 @@ export function TradeCalendar({
                 );
               })}
               <aside className="min-h-24 border-b border-border bg-gradient-to-br from-primary/[0.075] to-surface p-3 sm:min-h-28">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
-                  Weekly recap
-                </p>
                 <strong
                   className={cn(
-                    "mt-2 block font-mono text-lg",
+                    "block font-mono text-lg",
                     totalR < 0 ? "text-negative" : "text-positive",
                   )}
                 >

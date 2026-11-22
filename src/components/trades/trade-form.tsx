@@ -994,10 +994,7 @@ export function TradeForm({
               </div>
             ) : null}
           </section>
-          <h2 className="mb-6 mt-7 text-sm font-semibold uppercase tracking-wider">
-            Occurrence details
-          </h2>
-          <div className="grid gap-5 sm:grid-cols-3">
+          <div className="mt-7 grid gap-5 sm:grid-cols-3">
             <Field label="Instrument">
               <Select
                 value={instrument}

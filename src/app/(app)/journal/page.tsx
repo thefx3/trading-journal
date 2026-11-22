@@ -1,4 +1,4 @@
-import { format, isValid, parseISO } from "date-fns";
+import { addDays, format, isValid, parseISO, startOfWeek } from "date-fns";
 import { JournalHeader } from "@/components/journal/journal-header";
 import { JournalModeView } from "@/components/journal/journal-mode-view";
 import {
@@ -17,6 +17,20 @@ import {
 } from "@/lib/trading/metrics";
 import type { JournalMode } from "@/types/database";
 
+function currentDateIn(timezone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(new Date())
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 export default async function JournalPage({
   searchParams,
 }: {
@@ -32,9 +46,15 @@ export default async function JournalPage({
       ? params.mode
       : "all"
   ) as JournalMode | "all";
-  const parsedDate = params.date ? parseISO(params.date) : new Date();
-  const selectedDate = isValid(parsedDate) ? parsedDate : new Date();
-  const dateKey = format(selectedDate, "yyyy-MM-dd");
+  const todayKey = currentDateIn(preferences.timezone);
+  const parsedDate = parseISO(params.date ?? todayKey);
+  const selectedDate = isValid(parsedDate) ? parsedDate : parseISO(todayKey);
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const weekDays = Array.from({ length: 7 }, (_, index) =>
+    format(addDays(weekStart, index), "yyyy-MM-dd"),
+  );
+  const weekStartKey = weekDays[0]!;
+  const weekEndKey = weekDays[6]!;
   const query = new URLSearchParams(
     Object.entries(params).filter((entry): entry is [string, string] =>
       Boolean(entry[1]),
@@ -53,34 +73,49 @@ export default async function JournalPage({
       matchesResultFilter(trade, params.result) &&
       matchesTimeframeFilter(trade, selectedTimeframes),
   );
-  const daySummaries = filteredTrades.filter(
-    (trade) => trade.trade_date === dateKey,
+  const weekSummaries = filteredTrades.filter(
+    (trade) =>
+      trade.trade_date >= weekStartKey && trade.trade_date <= weekEndKey,
   );
-  const trades = await getTradesByIds(daySummaries.map((trade) => trade.id));
+  const weekTrades = await getTradesByIds(
+    weekSummaries.map((trade) => trade.id),
+  );
   const instruments = [
     ...new Set(allTrades.map((trade) => trade.instrument.symbol)),
   ].sort();
-  const dayMetrics = calculateMetrics(
-    allTrades.filter(
-      (trade) => trade.journal_mode === "live" && trade.trade_date === dateKey,
-    ),
+  const dayMetricsByDate = Object.fromEntries(
+    weekDays.map((day) => [
+      day,
+      calculateMetrics(
+        allTrades.filter(
+          (trade) => trade.journal_mode === "live" && trade.trade_date === day,
+        ),
+      ),
+    ]),
   );
-  const weeklyMetrics = calculateWeeklyOverview(allTrades, dateKey);
+  const weeklyCutoff =
+    todayKey >= weekStartKey && todayKey <= weekEndKey
+      ? todayKey
+      : weekEndKey < todayKey
+        ? weekEndKey
+        : weekStartKey;
+  const weeklyMetrics = calculateWeeklyOverview(allTrades, weeklyCutoff);
 
   return (
     <>
       <JournalHeader preferences={preferences} />
       <JournalModeView
+        key={format(selectedDate, "yyyy-MM-dd")}
         initialMode={activeMode}
-        dateKey={dateKey}
         selectedDate={format(selectedDate, "yyyy-MM-dd")}
         hasExplicitDate={Boolean(params.date)}
         queryString={query.toString()}
-        dayTrades={trades}
-        tradeSummaries={filteredTrades}
-        dayMetrics={dayMetrics}
+        weekDays={weekDays}
+        weekTrades={weekTrades}
+        dayMetricsByDate={dayMetricsByDate}
         weeklyMetrics={weeklyMetrics}
         instruments={instruments}
+        todayKey={todayKey}
       />
     </>
   );

@@ -14,10 +14,7 @@ export function WeeklyOverview({
   return (
     <Panel className="ambient-panel overflow-hidden">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="section-kicker text-foreground">Weekly overview</p>
-          <p className="mt-1 text-xs text-subtle">Recorded live performance</p>
-        </div>
+        <p className="section-kicker text-foreground">Weekly overview</p>
         <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
           <TrendingUp className="h-4 w-4" />
         </span>
