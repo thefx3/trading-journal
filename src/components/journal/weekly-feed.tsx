@@ -1,12 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { FeedCard } from "@/components/journal/feed-card";
 import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/database";
+
+const DESKTOP_BREAKPOINT = 1024;
+const DESKTOP_SCROLL_ANCHOR = 128;
+const MOBILE_SCROLL_ANCHOR = 184;
+
+type WeeklyFeedProps = {
+  days: string[];
+  trades: Trade[];
+  selectedDate: string;
+  activeDate: string;
+  todayKey: string;
+  queryString: string;
+  onActiveDateChange: (date: string) => void;
+};
 
 export function WeeklyFeed({
   days,
@@ -16,61 +30,44 @@ export function WeeklyFeed({
   todayKey,
   queryString,
   onActiveDateChange,
-}: {
-  days: string[];
-  trades: Trade[];
-  selectedDate: string;
-  activeDate: string;
-  todayKey: string;
-  queryString: string;
-  onActiveDateChange: (date: string) => void;
-}) {
+}: WeeklyFeedProps) {
   const router = useRouter();
   const feedRef = useRef<HTMLDivElement>(null);
-  const alignedWeekRef = useRef<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [trackingReady, setTrackingReady] = useState(false);
-  const tradesByDay = useMemo(() => {
+  const dayEntries = useMemo(() => {
     const grouped = new Map<string, Trade[]>();
-    trades.forEach((trade) => {
-      grouped.set(trade.trade_date, [
-        ...(grouped.get(trade.trade_date) ?? []),
-        trade,
-      ]);
-    });
-    return grouped;
-  }, [trades]);
-  const weekKey = days[0] ?? selectedDate;
+    for (const trade of trades) {
+      const group = grouped.get(trade.trade_date);
+      if (group) group.push(trade);
+      else grouped.set(trade.trade_date, [trade]);
+    }
+    return days.map((date) => ({
+      date,
+      day: parseISO(date),
+      trades: grouped.get(date) ?? [],
+    }));
+  }, [days, trades]);
+  const weekKey = dayEntries[0]?.date ?? selectedDate;
 
   useEffect(() => {
-    if (alignedWeekRef.current === weekKey) return;
-    alignedWeekRef.current = weekKey;
-    const frame = window.requestAnimationFrame(() => {
-      const target = feedRef.current?.querySelector<HTMLElement>(
-        `[data-feed-date="${selectedDate}"]`,
-      );
-      target?.scrollIntoView({ block: "start" });
-      setTrackingReady(true);
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [selectedDate, weekKey]);
-
-  useEffect(() => {
-    if (!trackingReady) return;
+    const feed = feedRef.current;
+    if (!feed) return;
     const sections = Array.from(
-      feedRef.current?.querySelectorAll<HTMLElement>("[data-feed-date]") ?? [],
+      feed.querySelectorAll<HTMLElement>("[data-feed-date]"),
     );
     if (!sections.length) return;
     let frame = 0;
     const updateActiveDay = () => {
       frame = 0;
-      const feedTop =
-        (feedRef.current?.getBoundingClientRect().top ?? 0) + window.scrollY;
+      const feedTop = feed.getBoundingClientRect().top + window.scrollY;
       const atFeedEnd =
         window.scrollY > feedTop &&
         window.scrollY + window.innerHeight >=
           document.documentElement.scrollHeight - 2;
-      const anchor = window.innerWidth >= 1024 ? 128 : 184;
+      const anchor =
+        window.innerWidth >= DESKTOP_BREAKPOINT
+          ? DESKTOP_SCROLL_ANCHOR
+          : MOBILE_SCROLL_ANCHOR;
       const activeSection = atFeedEnd
         ? sections.at(-1)
         : (sections.reduce<HTMLElement | undefined>((current, section) => {
@@ -84,15 +81,24 @@ export function WeeklyFeed({
       if (frame) return;
       frame = window.requestAnimationFrame(updateActiveDay);
     };
-    scheduleUpdate();
+    const alignmentFrame = window.requestAnimationFrame(() => {
+      feed
+        .querySelector<HTMLElement>(`[data-feed-date="${selectedDate}"]`)
+        ?.scrollIntoView({ block: "start" });
+      scheduleUpdate();
+    });
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    resizeObserver.observe(feed);
     window.addEventListener("scroll", scheduleUpdate, { passive: true });
     window.addEventListener("resize", scheduleUpdate);
     return () => {
+      resizeObserver.disconnect();
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", scheduleUpdate);
+      window.cancelAnimationFrame(alignmentFrame);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [onActiveDateChange, trackingReady, weekKey]);
+  }, [onActiveDateChange, selectedDate, weekKey]);
 
   function scrollToDay(date: string) {
     const target = feedRef.current?.querySelector<HTMLElement>(
@@ -124,9 +130,8 @@ export function WeeklyFeed({
             <ChevronLeft className="h-4 w-4" />
           </button>
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-            {days.map((date) => {
-              const day = parseISO(date);
-              const count = tradesByDay.get(date)?.length ?? 0;
+            {dayEntries.map(({ date, day, trades: dayTrades }) => {
+              const count = dayTrades.length;
               const active = date === activeDate;
               const future = date > todayKey;
               return (
@@ -179,41 +184,37 @@ export function WeeklyFeed({
       </div>
 
       <div ref={feedRef}>
-        {days.map((date) => {
-          const day = parseISO(date);
-          const dayTrades = tradesByDay.get(date) ?? [];
-          return (
-            <section
-              key={date}
-              data-feed-date={date}
-              className="scroll-mt-44 border-b border-border/70 py-5 first:pt-2 lg:scroll-mt-28"
-            >
-              <div className="mb-2 flex items-baseline justify-between gap-3">
-                <h2 className="text-sm font-semibold text-foreground">
-                  {format(day, "EEEE")}
-                  <span className="ml-2 font-normal text-muted">
-                    {format(day, "d MMMM")}
-                  </span>
-                </h2>
-                <span className="text-xs text-subtle">
-                  {dayTrades.length || "No"} trade
-                  {dayTrades.length === 1 ? "" : "s"}
+        {dayEntries.map(({ date, day, trades: dayTrades }) => (
+          <section
+            key={date}
+            data-feed-date={date}
+            className="scroll-mt-44 border-b border-border/70 py-5 first:pt-2 lg:scroll-mt-28"
+          >
+            <div className="mb-2 flex items-baseline justify-between gap-3">
+              <h2 className="text-sm font-semibold text-foreground">
+                {format(day, "EEEE")}
+                <span className="ml-2 font-normal text-muted">
+                  {format(day, "d MMMM")}
                 </span>
+              </h2>
+              <span className="text-xs text-subtle">
+                {dayTrades.length || "No"} trade
+                {dayTrades.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            {dayTrades.length ? (
+              <div className="divide-y divide-border/60">
+                {dayTrades.map((trade) => (
+                  <FeedCard key={trade.id} trade={trade} />
+                ))}
               </div>
-              {dayTrades.length ? (
-                <div className="divide-y divide-border/60">
-                  {dayTrades.map((trade) => (
-                    <FeedCard key={trade.id} trade={trade} />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid min-h-24 place-items-center rounded-lg border border-dashed border-border/70 text-sm text-subtle">
-                  No trades
-                </div>
-              )}
-            </section>
-          );
-        })}
+            ) : (
+              <div className="grid min-h-24 place-items-center rounded-lg border border-dashed border-border/70 text-sm text-subtle">
+                No trades
+              </div>
+            )}
+          </section>
+        ))}
       </div>
     </div>
   );

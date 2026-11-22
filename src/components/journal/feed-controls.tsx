@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { TIMEFRAMES } from "@/lib/trading/config";
 import { parseTimeframeFilter } from "@/lib/trading/filters";
 import { cn } from "@/lib/utils";
@@ -61,19 +61,23 @@ const STATIC_FILTERS = [
   },
 ] as const;
 
-export function FeedControls({
-  query,
-  instruments,
-  activeMode,
-}: {
-  query: URLSearchParams;
+type FeedControlsProps = {
+  queryString: string;
   instruments: string[];
   activeMode: JournalMode | "all";
-}) {
+};
+
+type Timeframe = (typeof TIMEFRAMES)[number];
+
+export function FeedControls({
+  queryString,
+  instruments,
+  activeMode,
+}: FeedControlsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries([...query.entries()]),
+    Object.fromEntries(new URLSearchParams(queryString).entries()),
   );
   function update(key: string, value: string) {
     const nextValues = {
@@ -84,9 +88,9 @@ export function FeedControls({
     };
     setValues(nextValues);
     const next = new URLSearchParams();
-    Object.entries(nextValues).forEach(([name, entry]) => {
+    for (const [name, entry] of Object.entries(nextValues)) {
       if (entry) next.set(name, entry);
-    });
+    }
     startTransition(() =>
       router.replace(`/journal?${next}`, { scroll: false }),
     );
@@ -95,8 +99,8 @@ export function FeedControls({
     setValues({});
     startTransition(() => router.replace("/journal", { scroll: false }));
   }
-  function toggleTimeframe(timeframe: string) {
-    const selected = new Set<string>(parseTimeframeFilter(values.timeframes));
+  function toggleTimeframe(timeframe: Timeframe) {
+    const selected = new Set(selectedTimeframes);
     if (selected.has(timeframe)) selected.delete(timeframe);
     else selected.add(timeframe);
     update(
@@ -104,11 +108,14 @@ export function FeedControls({
       TIMEFRAMES.filter((item) => selected.has(item)).join(","),
     );
   }
-  const instrumentOptions: [string, string][] = [
-    ["", "All"],
-    ...instruments.map((value) => [value, value] as [string, string]),
-  ];
-  const selectedTimeframes = parseTimeframeFilter(values.timeframes);
+  const instrumentOptions = useMemo<[string, string][]>(
+    () => [
+      ["", "All"],
+      ...instruments.map((value): [string, string] => [value, value]),
+    ],
+    [instruments],
+  );
+  const selectedTimeframes = new Set(parseTimeframeFilter(values.timeframes));
   return (
     <CollapsibleFilterPanel
       storageKey="trading-journal:journal-filters-open"
@@ -149,11 +156,11 @@ export function FeedControls({
             <button
               key={timeframe}
               type="button"
-              aria-pressed={selectedTimeframes.includes(timeframe)}
+              aria-pressed={selectedTimeframes.has(timeframe)}
               onClick={() => toggleTimeframe(timeframe)}
               className={cn(
                 "h-8 rounded-md border border-border bg-control px-2.5 text-xs text-muted transition hover:bg-control-hover hover:text-foreground",
-                selectedTimeframes.includes(timeframe) && "filter-chip-active",
+                selectedTimeframes.has(timeframe) && "filter-chip-active",
               )}
             >
               {timeframe}
@@ -170,26 +177,18 @@ function FilterRow({
   filterKey,
   values,
   selected,
-  disabled,
   update,
 }: {
   label: string;
   filterKey: string;
   values: readonly (readonly [string, string])[];
   selected: string;
-  disabled?: boolean;
   update: (key: string, value: string) => void;
 }) {
   const shown = values.slice(0, 6);
   return (
-    <fieldset
-      disabled={disabled}
-      className="mb-4 last:mb-0 disabled:opacity-35"
-    >
-      <legend className="mb-2 text-xs text-muted">
-        {label}
-        {disabled ? " · preset by tab" : ""}
-      </legend>
+    <fieldset className="mb-4 last:mb-0">
+      <legend className="mb-2 text-xs text-muted">{label}</legend>
       <div className="flex flex-wrap gap-1.5">
         {shown.map(([value, text]) => (
           <button

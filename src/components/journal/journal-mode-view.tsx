@@ -16,11 +16,24 @@ import type { JournalMode, Trade } from "@/types/database";
 
 type ActiveMode = JournalMode | "all";
 
-function modeFromLocation(fallback: ActiveMode): ActiveMode {
+type JournalModeViewProps = {
+  initialMode: ActiveMode;
+  selectedDate: string;
+  hasExplicitDate: boolean;
+  queryString: string;
+  weekDays: string[];
+  weekTrades: Trade[];
+  dayMetricsByDate: Record<string, PerformanceMetrics>;
+  weeklyMetrics: WeeklyOverviewMetrics;
+  instruments: string[];
+  todayKey: string;
+};
+
+function modeFromLocation(): ActiveMode {
   const value = new URLSearchParams(window.location.search).get("mode");
   return value === "live" || value === "study" || value === "practice"
     ? value
-    : fallback;
+    : "all";
 }
 
 export function JournalModeView({
@@ -34,23 +47,12 @@ export function JournalModeView({
   weeklyMetrics,
   instruments,
   todayKey,
-}: {
-  initialMode: ActiveMode;
-  selectedDate: string;
-  hasExplicitDate: boolean;
-  queryString: string;
-  weekDays: string[];
-  weekTrades: Trade[];
-  dayMetricsByDate: Record<string, PerformanceMetrics>;
-  weeklyMetrics: WeeklyOverviewMetrics;
-  instruments: string[];
-  todayKey: string;
-}) {
+}: JournalModeViewProps) {
   const [activeMode, setActiveMode] = useState(initialMode);
   const [activeDate, setActiveDate] = useState(selectedDate);
 
   useEffect(() => {
-    const syncMode = () => setActiveMode(modeFromLocation("all"));
+    const syncMode = () => setActiveMode(modeFromLocation());
     window.addEventListener("popstate", syncMode);
     return () => window.removeEventListener("popstate", syncMode);
   }, []);
@@ -75,10 +77,12 @@ export function JournalModeView({
   const updateActiveDate = useCallback((date: string) => {
     setActiveDate((current) => (current === date ? current : date));
   }, []);
-  const query = new URLSearchParams(queryString);
-  if (activeMode === "all") query.delete("mode");
-  else query.set("mode", activeMode);
-  const resolvedQuery = query.toString();
+  const resolvedQuery = useMemo(() => {
+    const query = new URLSearchParams(queryString);
+    if (activeMode === "all") query.delete("mode");
+    else query.set("mode", activeMode);
+    return query.toString();
+  }, [activeMode, queryString]);
   const firstDay = weekDays[0] ?? selectedDate;
   const lastDay = weekDays[6] ?? selectedDate;
   const dayMetrics = dayMetricsByDate[activeDate] ?? dayMetricsByDate[firstDay];
@@ -111,8 +115,8 @@ export function JournalModeView({
           onActiveDateChange={updateActiveDate}
         />
       </main>
-      <aside className="pt-4 xl:sticky xl:top-4 xl:self-start">
-        <div className="grid content-start gap-3 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:pr-1">
+      <aside className="pt-4 xl:sticky xl:top-3 xl:self-start xl:pt-0">
+        <div className="grid content-start gap-3 xl:max-h-[calc(100vh-1.5rem)] xl:overflow-y-auto xl:pr-1">
           {dayMetrics ? (
             <DayOverview
               key={activeDate}
@@ -123,7 +127,7 @@ export function JournalModeView({
           ) : null}
           <WeeklyOverview metrics={weeklyMetrics} />
           <FeedControls
-            query={query}
+            queryString={resolvedQuery}
             instruments={instruments}
             activeMode={activeMode}
           />
