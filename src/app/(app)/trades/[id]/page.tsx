@@ -51,7 +51,7 @@ export default async function TradePage({
         description={`${SESSION_LABELS[trade.session]} · ${trade.journal_mode}`}
         backHref="/journal"
       />
-      <Panel className="mb-8 flex flex-wrap items-center gap-x-6 gap-y-4 p-5">
+      <Panel className="ambient-panel mb-8 flex flex-wrap items-center gap-x-6 gap-y-4 p-5">
         <strong className="text-base">{trade.instrument.symbol}</strong>
         <JournalModeBadge mode={trade.journal_mode} />
         {trade.direction ? (

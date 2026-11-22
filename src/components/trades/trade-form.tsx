@@ -787,7 +787,7 @@ export function TradeForm({
               Paste session
             </Button>
           </div>
-          <label className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-zinc-700 bg-zinc-950/50 text-zinc-500 transition hover:border-blue-900 hover:text-blue-300">
+          <label className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-primary/20 bg-primary/[0.025] text-muted transition hover:border-primary/45 hover:bg-primary/[0.055] hover:text-primary">
             <ImagePlus className="mb-3 h-6 w-6" />
             <span className="text-sm font-medium">Upload charts</span>
             <span className="mt-1 text-xs">10 MB maximum each</span>
@@ -948,9 +948,9 @@ export function TradeForm({
             ))}
           </div>
         </section>
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-5 sm:p-6">
+        <section className="surface p-5 sm:p-6">
           <JournalModeSelector value={mode} onChange={changeMode} />
-          <section className="mt-6 rounded-lg border border-border bg-surface/55 p-4">
+          <section className="mt-6 rounded-xl border border-primary/10 bg-primary/[0.035] p-4">
             <div className="mb-4">
               <h2 className="text-sm font-semibold uppercase tracking-wider">
                 Review
@@ -1126,6 +1126,7 @@ export function TradeForm({
             <Button
               type="submit"
               size="lg"
+              variant="primary"
               disabled={pending || optimizing}
               className="focus-visible:ring-blue-700"
             >

@@ -12,7 +12,12 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Activity,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Panel } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
 import type { PerformanceMetrics } from "@/lib/trading/metrics";
@@ -43,16 +48,21 @@ export function DayOverview({
   return (
     <Panel
       className={cn(
-        "relative overflow-visible transition-opacity",
+        "ambient-panel relative overflow-visible transition-opacity",
         pending && "opacity-70",
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold">Day overview</h2>
-          <p className="mt-0.5 text-xs text-subtle">
-            Live · missed trades excluded
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Activity className="h-4 w-4" />
+          </span>
+          <div>
+            <h2 className="section-kicker text-foreground">Day overview</h2>
+            <p className="mt-0.5 text-xs text-subtle">
+              Live · missed trades excluded
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -93,7 +103,7 @@ export function DayOverview({
           onSelect={(day) => select(format(day, "yyyy-MM-dd"))}
         />
       ) : null}
-      <div className="mt-5 grid grid-cols-3 gap-3">
+      <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
         <Summary
           label="Realized R"
           value={`${metrics.totalR > 0 ? "+" : ""}${metrics.totalR.toFixed(1)}R`}
@@ -196,9 +206,9 @@ export function CompactDatePicker({
 }
 function Summary({ label, value }: { label: string; value: string | number }) {
   return (
-    <div>
+    <div className="soft-tile min-w-0 p-3">
       <span className="text-xs text-muted">{label}</span>
-      <strong className="mt-1 block font-mono text-sm font-medium">
+      <strong className="mt-1 block truncate font-mono text-sm font-semibold text-foreground sm:text-base">
         {value}
       </strong>
     </div>

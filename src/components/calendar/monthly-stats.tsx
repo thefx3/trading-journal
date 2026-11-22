@@ -44,9 +44,12 @@ export function MonthlyStats({ trades }: { trades: Trade[] }) {
   ];
   return (
     <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map((card) => (
-        <section key={card.label} className="surface p-4">
-          <p className="text-xs text-muted">{card.label}</p>
+      {cards.map((card, index) => (
+        <section
+          key={card.label}
+          className={cn("surface p-4", index === 0 && "ambient-panel")}
+        >
+          <p className="section-kicker">{card.label}</p>
           <strong
             className={cn(
               "mt-2 block font-mono text-xl font-medium",

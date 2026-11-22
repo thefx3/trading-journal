@@ -43,9 +43,9 @@ export function TradeCalendar({
     new Map<string, Trade[]>(),
   );
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
+    <div className="surface overflow-x-auto">
       <div className="min-w-[900px]">
-        <div className="grid grid-cols-[repeat(7,minmax(100px,1fr))_170px] border-b border-border bg-surface">
+        <div className="grid grid-cols-[repeat(7,minmax(100px,1fr))_170px] border-b border-primary/10 bg-primary/[0.035]">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Week"].map(
             (day) => (
               <div
@@ -98,15 +98,15 @@ export function TradeCalendar({
                     href={`/journal/${key}`}
                     prefetch
                     className={cn(
-                      "min-h-24 border-b border-r border-border p-2.5 transition hover:bg-control/60 sm:min-h-28",
+                      "min-h-24 border-b border-r border-border/80 p-2.5 transition hover:bg-primary/[0.045] sm:min-h-28",
                       !isSameMonth(day, month) && "opacity-25",
-                      isToday(day) && "bg-blue-500/6",
+                      isToday(day) && "bg-primary/[0.075]",
                     )}
                   >
                     <span
                       className={cn(
                         "text-sm text-muted",
-                        isToday(day) && "font-semibold text-blue-400",
+                        isToday(day) && "font-semibold text-primary",
                       )}
                     >
                       {format(day, "d")}
@@ -146,7 +146,7 @@ export function TradeCalendar({
                   </Link>
                 );
               })}
-              <aside className="min-h-24 border-b border-border bg-surface/55 p-3 sm:min-h-28">
+              <aside className="min-h-24 border-b border-border bg-gradient-to-br from-primary/[0.075] to-surface p-3 sm:min-h-28">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
                   Weekly recap
                 </p>

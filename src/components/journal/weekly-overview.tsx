@@ -12,12 +12,10 @@ export function WeeklyOverview({
   metrics: WeeklyOverviewMetrics;
 }) {
   return (
-    <Panel className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/8 via-surface to-surface">
+    <Panel className="ambient-panel overflow-hidden">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-            Weekly overview
-          </p>
+          <p className="section-kicker text-foreground">Weekly overview</p>
           <p className="mt-1 text-xs text-subtle">
             Live performance · missed trades excluded
           </p>

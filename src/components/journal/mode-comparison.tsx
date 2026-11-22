@@ -80,7 +80,7 @@ export function ModeComparisonColumn({
           ))}
         </nav>
       </div>
-      <div className="mb-5 grid grid-cols-3 divide-x divide-border rounded-lg border border-border bg-surface/40">
+      <div className="soft-tile mb-5 grid grid-cols-3 divide-x divide-border/80 overflow-hidden">
         <div className="p-3">
           <span className="text-xs text-muted">R</span>
           <strong className="mt-1 block font-mono">

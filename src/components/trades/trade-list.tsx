@@ -19,19 +19,19 @@ export function TradeList({ trades }: { trades: Trade[]; timezone?: string }) {
       </div>
     );
   return (
-    <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface/35">
+    <div className="surface divide-y divide-border/80 overflow-hidden">
       {trades.map((trade) => (
         <Link
           key={trade.id}
           href={`/trades/${trade.id}`}
-          className="grid grid-cols-[1fr_auto] items-center gap-4 p-4 transition hover:bg-control-hover sm:grid-cols-[120px_minmax(0,1fr)_150px_100px]"
+          className="grid grid-cols-[1fr_auto] items-center gap-4 p-4 transition hover:bg-primary/[0.045] sm:grid-cols-[120px_minmax(0,1fr)_150px_100px]"
         >
           <div className="hidden text-sm text-secondary sm:block">
             {format(new Date(`${trade.trade_date}T12:00:00`), "MMM d, yyyy")}
           </div>
           <div className="flex min-w-0 items-center gap-3">
             {trade.images[0]?.signed_url ? (
-              <span className="block w-16 shrink-0 overflow-hidden rounded-md border border-border">
+              <span className="block w-16 shrink-0 overflow-hidden rounded-lg border border-primary/10 bg-surface-raised">
                 <TradeChartImage
                   image={trade.images[0]}
                   alt="Chart"

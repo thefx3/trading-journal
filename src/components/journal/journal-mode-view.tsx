@@ -116,7 +116,7 @@ export function JournalModeView({
         {previousDate ? (
           <Link
             href={`/journal?${previousQuery}`}
-            className="mt-5 flex items-center justify-center gap-2 rounded-lg border border-border bg-surface/60 px-4 py-4 text-sm text-secondary transition hover:border-primary/35 hover:bg-control hover:text-foreground"
+            className="surface mt-5 flex items-center justify-center gap-2 px-4 py-4 text-sm text-secondary transition hover:border-primary/30 hover:bg-primary/[0.045] hover:text-foreground"
           >
             <ArrowDown className="h-4 w-4" />
             View trades from {format(parseISO(previousDate), "d MMMM yyyy")}
