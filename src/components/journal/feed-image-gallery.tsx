@@ -8,7 +8,7 @@ import { TradeChartImage } from "@/components/trades/trade-chart-image";
 import type { TradeImage } from "@/types/database";
 
 const MODAL_PAGE_SIZE = 3;
-const PREVIEW_PAGE_SIZE = 3;
+const PREVIEW_PAGE_SIZE = 4;
 const labels = {
   htf_analysis: "HTF Analysis",
   setup: "Context",
@@ -116,7 +116,7 @@ export function FeedImageGallery({
           ))}
         </div>
       ) : (
-        <div className="relative mt-4 w-full max-w-3xl px-7">
+        <div className="relative mt-4 w-full">
           {previewStart > 0 ? (
             <button
               type="button"
@@ -126,12 +126,12 @@ export function FeedImageGallery({
                   Math.max(0, value - PREVIEW_PAGE_SIZE),
                 )
               }
-              className="absolute left-0 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md border border-border bg-background/90 shadow-sm transition hover:bg-control-hover"
+              className="absolute left-2 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md border border-border bg-background/90 shadow-sm transition hover:bg-control-hover"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
           ) : null}
-          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-4">
             {previewImages.map((image, index) => (
               <button
                 key={image.id}
@@ -168,7 +168,7 @@ export function FeedImageGallery({
                   ),
                 )
               }
-              className="absolute right-0 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md border border-border bg-background/90 shadow-sm transition hover:bg-control-hover"
+              className="absolute right-2 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md border border-border bg-background/90 shadow-sm transition hover:bg-control-hover"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

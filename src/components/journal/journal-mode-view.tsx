@@ -111,21 +111,23 @@ export function JournalModeView({
           onActiveDateChange={updateActiveDate}
         />
       </main>
-      <aside className="grid content-start gap-3 pt-4">
-        {dayMetrics ? (
-          <DayOverview
-            key={activeDate}
-            date={activeDate}
-            metrics={dayMetrics}
-            queryString={resolvedQuery}
+      <aside className="pt-4 xl:sticky xl:top-4 xl:self-start">
+        <div className="grid content-start gap-3 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:pr-1">
+          {dayMetrics ? (
+            <DayOverview
+              key={activeDate}
+              date={activeDate}
+              metrics={dayMetrics}
+              queryString={resolvedQuery}
+            />
+          ) : null}
+          <WeeklyOverview metrics={weeklyMetrics} />
+          <FeedControls
+            query={query}
+            instruments={instruments}
+            activeMode={activeMode}
           />
-        ) : null}
-        <WeeklyOverview metrics={weeklyMetrics} />
-        <FeedControls
-          query={query}
-          instruments={instruments}
-          activeMode={activeMode}
-        />
+        </div>
       </aside>
     </div>
   );

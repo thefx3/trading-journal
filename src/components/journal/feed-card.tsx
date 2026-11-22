@@ -6,9 +6,7 @@ import { SESSION_LABELS } from "@/lib/trading/config";
 import type { Trade } from "@/types/database";
 
 export function FeedCard({ trade }: { trade: Trade }) {
-  const charts = trade.images
-    .filter((image) => Boolean(image.signed_url))
-    .slice(0, 6);
+  const charts = trade.images.filter((image) => Boolean(image.signed_url));
   const direction = trade.direction
     ? `${trade.direction[0].toUpperCase()}${trade.direction.slice(1)}`
     : "—";
@@ -17,7 +15,7 @@ export function FeedCard({ trade }: { trade: Trade }) {
       <Link
         href={`/trades/${trade.id}`}
         prefetch
-        className="group flex items-start justify-between gap-5 rounded-lg px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+        className="group flex items-start justify-between gap-5 rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
       >
         <div className="flex min-w-0 items-center gap-3">
           <JournalModeMarker mode={trade.journal_mode} />

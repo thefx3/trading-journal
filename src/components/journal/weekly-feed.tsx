@@ -29,7 +29,7 @@ export function WeeklyFeed({
   const feedRef = useRef<HTMLDivElement>(null);
   const alignedWeekRef = useRef<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [observerReady, setObserverReady] = useState(false);
+  const [trackingReady, setTrackingReady] = useState(false);
   const tradesByDay = useMemo(() => {
     const grouped = new Map<string, Trade[]>();
     trades.forEach((trade) => {
@@ -50,34 +50,49 @@ export function WeeklyFeed({
         `[data-feed-date="${selectedDate}"]`,
       );
       target?.scrollIntoView({ block: "start" });
-      setObserverReady(true);
+      setTrackingReady(true);
     });
     return () => window.cancelAnimationFrame(frame);
   }, [selectedDate, weekKey]);
 
   useEffect(() => {
-    if (!observerReady) return;
+    if (!trackingReady) return;
     const sections = Array.from(
       feedRef.current?.querySelectorAll<HTMLElement>("[data-feed-date]") ?? [],
     );
     if (!sections.length) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (left, right) =>
-              left.boundingClientRect.top - right.boundingClientRect.top,
-          );
-        const date = (visible[0]?.target as HTMLElement | undefined)?.dataset
-          .feedDate;
-        if (date) onActiveDateChange(date);
-      },
-      { rootMargin: "-150px 0px -62% 0px", threshold: [0, 0.01] },
-    );
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, [observerReady, onActiveDateChange, weekKey]);
+    let frame = 0;
+    const updateActiveDay = () => {
+      frame = 0;
+      const feedTop =
+        (feedRef.current?.getBoundingClientRect().top ?? 0) + window.scrollY;
+      const atFeedEnd =
+        window.scrollY > feedTop &&
+        window.scrollY + window.innerHeight >=
+          document.documentElement.scrollHeight - 2;
+      const anchor = window.innerWidth >= 1024 ? 128 : 184;
+      const activeSection = atFeedEnd
+        ? sections.at(-1)
+        : (sections.reduce<HTMLElement | undefined>((current, section) => {
+            const top = section.getBoundingClientRect().top;
+            return top <= anchor ? section : current;
+          }, undefined) ?? sections[0]);
+      const date = activeSection?.dataset.feedDate;
+      if (date) onActiveDateChange(date);
+    };
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateActiveDay);
+    };
+    scheduleUpdate();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    return () => {
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [onActiveDateChange, trackingReady, weekKey]);
 
   function scrollToDay(date: string) {
     const target = feedRef.current?.querySelector<HTMLElement>(
@@ -90,10 +105,7 @@ export function WeeklyFeed({
 
   function changeWeek(offset: number) {
     const query = new URLSearchParams(queryString);
-    query.set(
-      "date",
-      format(addDays(parseISO(selectedDate), offset), "yyyy-MM-dd"),
-    );
+    query.set("date", format(addDays(parseISO(weekKey), offset), "yyyy-MM-dd"));
     startTransition(() =>
       router.replace(`/journal?${query}`, { scroll: false }),
     );
