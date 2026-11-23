@@ -42,14 +42,14 @@ function TradeCardGallery({
 
   return (
     <>
-      <div className="flex items-start overflow-x-auto overscroll-x-contain">
+      <div className="flex items-start gap-px overflow-x-auto overscroll-x-contain bg-border">
         {images.map((image) => (
           <button
             key={image.id}
             type="button"
             aria-label={`Open all ${symbol} charts from ${image.timeframe}`}
             onClick={() => setOpen(true)}
-            className="w-48 shrink-0 cursor-zoom-in text-left focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 sm:w-56 lg:w-64 xl:w-72"
+            className="w-48 shrink-0 cursor-zoom-in text-left ring-1 ring-inset ring-border focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 sm:w-56 lg:w-64 xl:w-72"
           >
             <TradeChartImage
               image={image}
@@ -84,7 +84,7 @@ function TradeCardGallery({
           >
             <div
               className={cn(
-                "grid items-start",
+                "grid items-start gap-px bg-border",
                 enlargedRowClass(images.length),
               )}
               style={
@@ -96,15 +96,16 @@ function TradeCardGallery({
               }
             >
               {images.map((image) => (
-                <TradeChartImage
-                  key={image.id}
-                  image={image}
-                  alt={`${symbol} ${image.timeframe} chart`}
-                  label={image.timeframe}
-                  sizes="(max-width: 960px) 320px, 50vw"
-                  className="rounded-none"
-                  interactive={false}
-                />
+                <div key={image.id} className="ring-1 ring-inset ring-border">
+                  <TradeChartImage
+                    image={image}
+                    alt={`${symbol} ${image.timeframe} chart`}
+                    label={image.timeframe}
+                    sizes="(max-width: 960px) 320px, 50vw"
+                    className="rounded-none"
+                    interactive={false}
+                  />
+                </div>
               ))}
             </div>
           </div>
