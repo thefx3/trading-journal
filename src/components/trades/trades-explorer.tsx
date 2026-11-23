@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LayoutGrid, List } from "lucide-react";
+import { TradeCardView } from "./trade-card-view";
 import { TradeDateFilter } from "./trade-date-filter";
 import { TradeList } from "./trade-list";
 import { Button } from "@/components/ui/button";
@@ -14,8 +16,27 @@ import {
 import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/database";
 
-function filtersFromLocation() {
-  return Object.fromEntries(new URLSearchParams(window.location.search));
+type TradeView = "list" | "cards";
+
+function parseTradeView(value: string | undefined): TradeView {
+  return value === "cards" ? "cards" : "list";
+}
+
+function explorerStateFromLocation() {
+  const filters = Object.fromEntries(
+    new URLSearchParams(window.location.search),
+  );
+  const view = parseTradeView(filters.view);
+  delete filters.view;
+  return { filters, view };
+}
+
+function initialExplorerFilters(
+  initialFilters: Record<string, string | undefined>,
+) {
+  const filters = { ...initialFilters };
+  delete filters.view;
+  return filters;
 }
 
 export function TradesExplorer({
@@ -27,10 +48,18 @@ export function TradesExplorer({
   timezone: string;
   initialFilters: Record<string, string | undefined>;
 }) {
-  const [filters, setFilters] =
-    useState<Record<string, string | undefined>>(initialFilters);
+  const [filters, setFilters] = useState<Record<string, string | undefined>>(
+    () => initialExplorerFilters(initialFilters),
+  );
+  const [view, setView] = useState<TradeView>(() =>
+    parseTradeView(initialFilters.view),
+  );
   useEffect(() => {
-    const sync = () => setFilters(filtersFromLocation());
+    const sync = () => {
+      const state = explorerStateFromLocation();
+      setFilters(state.filters);
+      setView(state.view);
+    };
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
   }, []);
@@ -108,6 +137,7 @@ export function TradesExplorer({
     Object.entries(next).forEach(([key, value]) => {
       if (value) query.set(key, value);
     });
+    if (view === "cards") query.set("view", view);
     window.history.pushState(
       null,
       "",
@@ -115,11 +145,57 @@ export function TradesExplorer({
     );
     setFilters(next);
   }
+  function changeView(nextView: TradeView) {
+    if (nextView === view) return;
+    const query = new URLSearchParams(window.location.search);
+    if (nextView === "cards") query.set("view", nextView);
+    else query.delete("view");
+    window.history.replaceState(
+      null,
+      "",
+      query.size ? `/trades?${query}` : "/trades",
+    );
+    setView(nextView);
+  }
   return (
     <>
-      <p className="mb-4 text-sm text-muted">
-        {visible.length} recorded entr{visible.length === 1 ? "y" : "ies"}
-      </p>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          {visible.length} recorded entr{visible.length === 1 ? "y" : "ies"}
+        </p>
+        <div
+          role="group"
+          aria-label="Trade view"
+          className="inline-flex rounded-lg border border-border bg-control p-1"
+        >
+          <button
+            type="button"
+            aria-pressed={view === "list"}
+            onClick={() => changeView("list")}
+            className={cn(
+              "inline-flex h-8 items-center gap-2 rounded-md px-3 text-xs font-medium text-muted transition hover:text-foreground",
+              view === "list" &&
+                "bg-surface-raised text-foreground shadow-sm ring-1 ring-primary/10",
+            )}
+          >
+            <List className="h-3.5 w-3.5" />
+            List
+          </button>
+          <button
+            type="button"
+            aria-pressed={view === "cards"}
+            onClick={() => changeView("cards")}
+            className={cn(
+              "inline-flex h-8 items-center gap-2 rounded-md px-3 text-xs font-medium text-muted transition hover:text-foreground",
+              view === "cards" &&
+                "bg-surface-raised text-foreground shadow-sm ring-1 ring-primary/10",
+            )}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Cards
+          </button>
+        </div>
+      </div>
       <CollapsibleFilterPanel
         storageKey="trading-journal:trades-filters-open"
         className="mb-5"
@@ -189,7 +265,11 @@ export function TradesExplorer({
           </div>
         </form>
       </CollapsibleFilterPanel>
-      <TradeList trades={visible} timezone={timezone} />
+      {view === "cards" && visible.length ? (
+        <TradeCardView trades={visible} />
+      ) : (
+        <TradeList trades={visible} timezone={timezone} />
+      )}
     </>
   );
 }
