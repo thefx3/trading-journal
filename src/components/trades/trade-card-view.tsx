@@ -67,7 +67,7 @@ function TradeCardGallery({
           role="dialog"
           aria-modal="true"
           aria-label={`${symbol} trade charts`}
-          className="fixed inset-0 z-[100] flex items-center bg-background/70 backdrop-blur-md"
+          className="fixed inset-0 z-[100] flex items-center bg-background/70 px-4 backdrop-blur-md sm:px-8 lg:px-12"
           onClick={() => setOpen(false)}
         >
           <button
